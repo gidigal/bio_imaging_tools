@@ -1,0 +1,5 @@
+{
+    "input_file": "D:/Gidi/weizmann/alex/samples/nematic_with_DNA_network_10x_2x2_bin.nd2",
+    "output_dir": "D:/Gidi/weizmann/alex/ND2TiffExporter/python/split_channels/output",
+    "roi_skip_empty": "true"
+}
