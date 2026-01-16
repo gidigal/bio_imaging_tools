@@ -1,0 +1,9 @@
+nd2reader
+nd2
+lxml
+xarray
+tifffile
+tqdm
+Pillow
+matplotlib
+tkinterdnd2
