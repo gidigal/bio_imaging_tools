@@ -5,8 +5,7 @@ from tqdm import tqdm
 import time
 import os
 import tifffile
-from gui.settings import settings_instance
-
+from config.settings import settings_instance
 
 
 def convert_to_pil_image(frame_data):

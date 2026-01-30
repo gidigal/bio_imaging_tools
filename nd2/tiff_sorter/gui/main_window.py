@@ -4,7 +4,7 @@ from tkinter import filedialog
 from matplotlib.colors import LinearSegmentedColormap
 from tkinterdnd2 import DND_FILES, TkinterDnD
 import os
-from gui.settings import settings_instance
+from config.settings import settings_instance
 from pathlib import Path
 from nd2_tools.nd2_wrapper import ND2Wrapper
 from tkinter import ttk
@@ -13,6 +13,33 @@ import numpy as np
 from matplotlib.widgets import RectangleSelector
 from functools import partial
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
+def manual_blending(current_images, vmin, vmax):
+    # Multiple channels - manual additive blending
+    # Get image shape
+    height, width = current_images[0].shape
+    # Create RGB composite (height, width, 3)
+    composite = np.zeros((height, width, 3), dtype=np.float32)
+
+    # Channel colors: green, magenta, blue, red
+    channel_colors = [
+        np.array([0, 1, 0]),  # green
+        np.array([1, 0, 1]),  # magenta
+        np.array([0, 0, 1]),  # blue
+        np.array([1, 0, 0])  # red
+    ]
+
+    for index in range(len(current_images)):
+        # Normalize the image to 0-1 range using its own vmin/vmax
+        normalized = np.clip((current_images[index].astype(np.float32) - vmin[index]) / (vmax[index] - vmin[index]),
+                             0, 1)
+        # Add this channel's contribution to composite
+        color = channel_colors[index % len(channel_colors)]
+        composite += normalized[:, :, np.newaxis] * color
+
+    # Clip to valid range
+    return np.clip(composite, 0, 1)
 
 
 class MainWindow:
@@ -57,7 +84,8 @@ class MainWindow:
         self.color_coded_boxes_frame = None
 
     def on_input_file_change(self, var, index, mode):
-        self.images = self.nd2_manager.get(input_file=self.input_file.get())
+        if self.input_file is not None and self.input_file.get() != 'None':
+            self.images = self.nd2_manager.get(input_file=self.input_file.get())
 
     def init_vars(self):
         self.input_file = tk.StringVar()
@@ -260,7 +288,7 @@ class MainWindow:
             # Single channel - display normally
             ax.imshow(images[0], cmap=cmaps[0], vmin=vmin_list[0], vmax=vmax_list[0])
         else:
-            composite = self.manual_blending(images, vmin_list, vmax_list)
+            composite = manual_blending(images, vmin_list, vmax_list)
             ax.imshow(composite)
         ax.set_facecolor('black')
         ax.axis('off')
@@ -296,32 +324,6 @@ class MainWindow:
             key = f"{multipoint}_{channel}"
             res.append(first_images[key])
         return res
-
-    def manual_blending(self, current_images, vmin, vmax):
-        # Multiple channels - manual additive blending
-        # Get image shape
-        height, width = current_images[0].shape
-        # Create RGB composite (height, width, 3)
-        composite = np.zeros((height, width, 3), dtype=np.float32)
-
-        # Channel colors: green, magenta, blue, red
-        channel_colors = [
-            np.array([0, 1, 0]),  # green
-            np.array([1, 0, 1]),  # magenta
-            np.array([0, 0, 1]),  # blue
-            np.array([1, 0, 0])  # red
-        ]
-
-        for index in range(len(current_images)):
-            # Normalize the image to 0-1 range using its own vmin/vmax
-            normalized = np.clip((current_images[index].astype(np.float32) - vmin[index]) / (vmax[index] - vmin[index]),
-                                 0, 1)
-            # Add this channel's contribution to composite
-            color = channel_colors[index % len(channel_colors)]
-            composite += normalized[:, :, np.newaxis] * color
-
-        # Clip to valid range
-        return np.clip(composite, 0, 1)
 
     def create_first_image_container(self, multipoint, channel, first_images, channel_names, channel_cmaps, col):
         key = f"{multipoint}_{channel}" if channel is not None else f"{multipoint}"
@@ -371,7 +373,7 @@ class MainWindow:
             # Single channel - display normally
             ax.imshow(current_images[0], cmap=cmaps_to_use[0], vmin=vmin[0], vmax=vmax[0])
         else:
-            composite = self.manual_blending(current_images, vmin, vmax)
+            composite = manual_blending(current_images, vmin, vmax)
             ax.imshow(composite)
         ax.set_facecolor('black')  # Ensure black background
 
@@ -433,9 +435,7 @@ class MainWindow:
     def manage_roi(self, visible=True):
         if visible:
             self.add_images_frame()
-            self.add_checkboxes_frame()
-            self.add_toggle_buttons_frame()
-            self.add_color_coded_boxes_frame()
+            self.add_image_selection_controls()
             self.add_first_images()
         else:
             if self.images_frame is not None:
@@ -550,21 +550,11 @@ class MainWindow:
         cb.pack(side="left", padx=2)
         self.visibility_vars[key] = var
 
-
     def add_checkboxes_frame(self):
         self.checkboxes_frame = tk.Frame(self.scrollable_frame, bg="white", relief="raised", borderwidth=2)
         self.currently_selected_selection_frame = self.checkboxes_frame
         self.checkboxes_frame.grid(row=0, column=0, columnspan=100, sticky="ew", pady=5, padx=5)
         tk.Label(self.checkboxes_frame, text="Show/Hide:", bg="lightgray").pack(side="left", padx=5)
-        # Create checkbox for each image
-        m_len = self.images.get_multipoints_number()
-        c_len = self.images.get_channels_number()
-        channel_names = self.images.get_channel_names()  # Get the names
-        for multipoint in range(m_len):
-            if c_len > 1:
-                self.add_check_box(multipoint, None, None)
-            for channel in range(c_len):
-                self.add_check_box(multipoint, channel, channel_names)
         self.selection_frames['Checkboxes'] = self.checkboxes_frame
 
     def toggle_image_button(self, key):
@@ -612,18 +602,6 @@ class MainWindow:
         self.toggle_buttons_frame = tk.Frame(self.scrollable_frame, bg="white", relief="raised", borderwidth=2)
         self.toggle_buttons_frame.grid(row=0, column=0, columnspan=100, sticky="ew", pady=5, padx=5)
         tk.Label(self.toggle_buttons_frame, text="Show/Hide:", bg="lightgray").pack(side="left", padx=5)
-        # Create checkbox for each image
-        m_len = self.images.get_multipoints_number()
-        c_len = self.images.get_channels_number()
-        channel_names = self.images.get_channel_names()  # Get the names
-        # Calculate the longest label
-        max_width = max(len(f"M: {m + 1} / {channel_names[c]}")
-                        for m in range(m_len) for c in range(c_len))
-        for multipoint in range(m_len):
-            if c_len > 1:
-                self.add_toggle_button(multipoint, None, None, max_width)
-            for channel in range(c_len):
-                self.add_toggle_button(multipoint, channel, channel_names, max_width)
         self.toggle_buttons_frame.grid_forget()
         self.selection_frames["Toggle buttons"] = self.toggle_buttons_frame
 
@@ -644,19 +622,29 @@ class MainWindow:
         self.color_coded_boxes_frame = tk.Frame(self.scrollable_frame, bg="white", relief="raised", borderwidth=2)
         self.color_coded_boxes_frame.grid(row=0, column=0, columnspan=100, sticky="ew", pady=5, padx=5)
         tk.Label(self.color_coded_boxes_frame, text="Show/Hide:", bg="lightgray").pack(side="left", padx=5)
-        # Create checkbox for each image
+        self.color_coded_boxes_frame.grid_forget()
+        self.selection_frames["Color coded boxes"] = self.color_coded_boxes_frame
+
+    def add_image_selection_controls(self):
+        self.add_checkboxes_frame()
+        self.add_toggle_buttons_frame()
+        self.add_color_coded_boxes_frame()
         m_len = self.images.get_multipoints_number()
         c_len = self.images.get_channels_number()
         channel_names = self.images.get_channel_names()  # Get the names
-        # Get channel color
         colors = ['green', 'magenta', 'blue', 'red']
+        # Calculate the longest label
+        max_width = max(len(f"M: {m + 1} / {channel_names[c]}")
+                        for m in range(m_len) for c in range(c_len))
         for multipoint in range(m_len):
             if c_len > 1:
+                self.add_check_box(multipoint, None, None)
+                self.add_toggle_button(multipoint, None, None, max_width)
                 self.add_color_coded_box(multipoint, None, None)
             for channel in range(c_len):
+                self.add_check_box(multipoint, channel, channel_names)
+                self.add_toggle_button(multipoint, channel, channel_names, max_width)
                 self.add_color_coded_box(multipoint, channel, colors)
-        self.color_coded_boxes_frame.grid_forget()
-        self.selection_frames["Color coded boxes"] = self.color_coded_boxes_frame
 
     def start(self):
         # Create the main window

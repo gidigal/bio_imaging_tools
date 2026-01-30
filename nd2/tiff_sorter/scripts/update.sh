@@ -17,6 +17,6 @@ fi
 
 # Install/update packages
 echo "Updating packages..."
-"$PIP3" install -q -r "$PROJECT_DIR/requirements.txt"
+"$PIP3" install -q -r "$SCRIPTS_DIR/requirements.txt"
 
 echo "Update complete!"
