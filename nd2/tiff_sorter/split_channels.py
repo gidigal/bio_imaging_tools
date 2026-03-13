@@ -1,39 +1,93 @@
 import sys
 from gui.main_window import MainWindow
-from gui.roi_window import ROIWindow
 from nd2_tools.nd2_manager import ND2Manager
+import os.path
+from works.single_process_orchestrator import SingleProcessOrchestrator
+import json
+
+
+def show_ui(args):
+    return len(args) > 0 and args[0] == '-ui'
+
+
+def parse_args(args):
+    res = {}
+    for i in range(len(args)):
+        if args[i] == '-input_file' and i < len(args) - 1:
+            res['input_file'] = args[i + 1]
+        if args[i] == '-output_dir' and i < len(args) - 1:
+            res['output_dir'] = args[i + 1]
+        if args[i] == '-matlab_output_dir' and i < len(args) - 1:
+            res['matlab_output_dir'] = args[i + 1]
+        if args[i] == '-calibration_file' and i < len(args) - 1:
+            res['calibration_file'] = args[i + 1]
+        if args[i] == '-piv_params_file' and i < len(args) - 1:
+            res['piv_params_file'] = args[i + 1]
+        if args[i] == '-roi_file' and i < len(args) - 1:
+            res['roi_file'] = args[i + 1]
+
+    return res
+
+
+def test_args(args_dict):
+    res = True
+    if 'input_file' in args_dict.keys():
+        if os.path.isfile(args_dict['input_file']) is False:
+            print('-input_file refers to non-existing file: ' + args_dict['input_file'])
+            res = False
+        else:
+            if 'matlab_output_dir' in args_dict.keys():
+                if 'calibration_file' not in args_dict.keys() or 'piv_params_file' not in args_dict.keys():
+                    print('When using PIVLab integration (-output_matlab_dir) you must also declare -piv_params_file '
+                          'and -calibration_file')
+                    res = False
+                else:
+                    if os.path.isfile(args_dict['calibration_file']) is False:
+                        print('-calibration_file refers to non-existing file: ' + args_dict['calibration_file'])
+                        res = False
+                    else:
+                        if os.path.isfile(args_dict['piv_params_file']) is False:
+                            print('-piv_params_file refers to non-existing file: ' + args_dict['piv_params_file'])
+                            res = False
+            if 'roi_file' in args_dict.keys() and os.path.isfile(args_dict['roi_file']) is False:
+                print('-roi_file refers to non-existing file: ' + args_dict['roi_file'])
+                res = False
+    else:
+        print('Please specify input file using -input_file parameter')
+        res = False
+    return res
+
+
+def start_working(args_dict):
+    orchestrator = SingleProcessOrchestrator(args_dict)
+    orchestrator.run()
 
 
 def main(args):
     initialized = False
     nd2_wrapper = None
     roi_data = None
+    input_file = None
+    output_dir = None
+    output_matlab_file = None
+    calibration_file = None
+    piv_params_file = None
+    args_dict = {}
+
     nd2_manager = ND2Manager()
-    #UI
-    if len(args) == 0:
+    # UI
+    if show_ui(args):
         main_window = MainWindow("ND2TiffExporter", nd2_manager)
         main_window.start()
-        [input_file, output_dir, roi_data, initialized] = main_window.get_args()
-    elif args[0] == '-roi':
-        input_file = args[1]
-        output_dir = args[2]
-        nd2_wrapper = nd2_manager.get(input_file=input_file)
-        roi_window = ROIWindow(nd2_wrapper)
-        roi_window.start()
-        roi_data = roi_window.get_roi_data()
-        initialized = roi_window.start_hit
+        args_dict = main_window.get_args()
     else:
-        input_file = args[0]
-        output_dir = args[1]
-        nd2_wrapper = nd2_manager.get(input_file=input_file)
-        initialized = True
-
-    if initialized is True and\
-        input_file is not None and len(input_file) > 0 and\
-            output_dir is not None and len(output_dir) > 0:
-        nd2_wrapper = nd2_manager.get(input_file=input_file)
-        nd2_wrapper.extract_tiffs(output_dir, roi_data)
-    
+        args_dict = parse_args(args)
+    initialized = test_args(args_dict)
+    if initialized is True:
+        if 'roi_file' in args_dict.keys():
+            with open(args_dict['roi_file'], 'r') as roi_file:
+                args_dict['roi'] = json.load(roi_file)
+        start_working(args_dict)
 
 if __name__ == "__main__":
     # sys.argv[0] is the script name itself, so we slice from index 1

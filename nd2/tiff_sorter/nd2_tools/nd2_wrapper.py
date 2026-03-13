@@ -5,7 +5,7 @@ from tqdm import tqdm
 import time
 import os
 import tifffile
-from config.settings import settings_instance
+from config.settings import Settings
 
 
 def convert_to_pil_image(frame_data):
@@ -39,7 +39,28 @@ def should_handle_multipoint_channel_combination(roi_data):
     return roi_data is not None and len(roi_data.keys()) > 0
 
 
+def get_channel_dir(output_dir,  multipoint, channel, roi):
+    directory_name = f"FOV_{multipoint + 1}_Channel_{channel + 1}"
+    if roi is not None :
+        x_min, y_min, x_max, y_max = roi
+        directory_name += f"_ROI_{x_min}_{y_min}_{x_max}_{y_max}"
+    return os.path.join(output_dir, directory_name)
+
+
 class ND2Wrapper:
+    _instance = None
+
+    @classmethod
+    def instance(cls, input_file):
+        if ND2Wrapper._instance is not None:
+            current_input_file = ND2Wrapper._instance.get_input_file()
+            if current_input_file != input_file:
+                ND2Wrapper._instance.close()
+                ND2Wrapper._instance = ND2Wrapper(input_file)
+        else:
+            ND2Wrapper._instance = ND2Wrapper(input_file)
+        return ND2Wrapper._instance
+
     def __init__(self, input_file):
         self.input_file = input_file
         self.nd2_reader = ND2Reader(self.input_file)
@@ -98,6 +119,59 @@ class ND2Wrapper:
                 res[key] = self.get_image(multipoint, channel, 0)
         return res
 
+    def nd2_images_reader_generator(self, multipoint, channel, roi, report_strategy):
+        skip_missing_roi = Settings.instance().get("roi_skip_empty") == "true"
+        images = self.nd2_reader
+        # Iterate through time points
+        if 't' in images.axes:
+            num_frames = images.sizes['t']
+        else:
+            num_frames = 1
+        for t in range(num_frames):
+            read_start = time.time()
+            img = self.get_image(multipoint, channel, t, roi=roi)
+            report_strategy.report_time('read', time.time() - read_start)
+            report_strategy.read_progress()
+            yield img
+
+    def nd2_images_writer_generator(self, read_generator, channel_dir, report_strategy):
+        frame_idx = 0
+        for image in read_generator:
+            # Save as TIFF - raw pixel data, no scaling or color mapping
+            output_path = os.path.join(channel_dir, f"img_{frame_idx:04d}.tif")
+            write_start = time.time()
+            tifffile.imwrite(output_path, image, photometric='minisblack')
+            report_strategy.report_time('write', time.time() - write_start)
+            report_strategy.write_progress()
+            frame_idx += 1
+            yield image
+
+    def nd2_images_generator(self, multipoint=0, channel=0, roi=None, output_dir=None):
+        total_planes = self.get_total_planes()
+        read_progress_bar = tqdm(total=total_planes, desc=f"Reading planes", position=0, leave=True) if output_dir is None else None
+        read_generator = self.nd2_images_reader_generator(multipoint, channel, roi, read_progress_bar)
+        res = None
+        if output_dir is None:
+            res = read_generator
+        else:
+            channel_dir = get_channel_dir(output_dir, multipoint, channel, roi)
+            write_progress_bar = tqdm(total=total_planes, desc=f"Writing planes", position=0, leave=True)
+            res = self.nd2_images_writer_generator(read_generator, channel_dir, write_progress_bar)
+        return res
+
+    def get_total_planes(self):
+        images = self.nd2_reader
+        return images.sizes['t'] * self.get_channels_number() * self.get_multipoints_number()
+
+    def get_timepoints(self):
+        return self.nd2_reader.sizes['t']
+
+    def get_total_plane_pairs(self):
+        planes = self.nd2_reader.sizes['t']
+        channels = self.get_channels_number()
+        multipoints = self.get_multipoints_number()
+        return (planes-1)*multipoints*channels
+
     def extract_tiffs(self, output_dir, roi_data):
         start_time = time.time()
         read_time = 0
@@ -111,7 +185,7 @@ class ND2Wrapper:
 
         total_planes = images.sizes['t'] * self.get_channels_number() * self.get_multipoints_number()
 
-        skip_missing_roi = settings_instance.get("roi_skip_empty") == "true"
+        skip_missing_roi = Settings.instance().get("roi_skip_empty") == "true"
 
         with tqdm(total=total_planes, desc=f"Exporting planes", position=0, leave=True) as progress_bar:
 
@@ -190,5 +264,4 @@ class ND2Wrapper:
 
     def close(self):
         self.nd2_reader.close()
-
 

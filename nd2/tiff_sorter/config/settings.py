@@ -4,6 +4,14 @@ import json
 
 
 class Settings:
+    _instance = None
+
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
     def __init__(self):
         self.data = {}
         # check if settings.json exists in current working directory. If it does - load it
@@ -27,6 +35,3 @@ class Settings:
         with open(self.settings_file_name, 'w') as file:
             json.dump(self.data, file, indent=4)
         print(f"settings written to {self.settings_file_name}")
-
-
-settings_instance = Settings()

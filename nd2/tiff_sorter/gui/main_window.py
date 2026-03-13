@@ -4,7 +4,7 @@ from tkinter import filedialog
 from matplotlib.colors import LinearSegmentedColormap
 from tkinterdnd2 import DND_FILES, TkinterDnD
 import os
-from config.settings import settings_instance
+from config.settings import Settings
 from pathlib import Path
 from nd2_tools.nd2_wrapper import ND2Wrapper
 from tkinter import ttk
@@ -90,9 +90,9 @@ class MainWindow:
     def init_vars(self):
         self.input_file = tk.StringVar()
         self.input_file.trace_add('write', self.on_input_file_change)
-        self.input_file.set(settings_instance.get('input_file'))
+        self.input_file.set(Settings.instance().get('input_file'))
         self.output_dir = tk.StringVar()
-        self.output_dir.set(settings_instance.get('output_dir'))
+        self.output_dir.set(Settings.instance().get('output_dir'))
 
     def on_text_change(self, var, index, mode):
         current_value = self.input_file.get()
@@ -102,7 +102,7 @@ class MainWindow:
         # event.data contains the path of the dropped file(s)
         print(f"Dropped: {event.data}")
         self.input_file.set(event.data[1:-1])
-        settings_instance.set('input_file', self.input_file.get())
+        Settings.instance().set('input_file', self.input_file.get())
 
         if self.roi.get() == 1:
             images = ND2Wrapper(self.input_file.get())
@@ -121,7 +121,7 @@ class MainWindow:
         if self.input_file is not None and self.output_dir is not None:
             self.initialized = True
 
-        settings_instance.set('output_dir', self.output_dir)
+        Settings.instance().set('output_dir', self.output_dir)
 
         self.close_window()
 
@@ -142,19 +142,19 @@ class MainWindow:
                 title="Select ND2 File",  # Sets the dialog title
                 filetypes=(("ND2 files", "*.nd2_tools"),)  # Filters file types
             )
-            settings_instance.set('input_file', self.input_file)
+            Settings.instance().set('input_file', self.input_file)
             output_dir_start_dir = current_working_dir
             if self.output_dir is not None:
                 output_dir_start_dir = self.output_dir
             self.output_dir = filedialog.askdirectory(initialdir=output_dir_start_dir,  # Sets the initial directory
                                                         title="Select output directory")  # Sets the dialog title
-            settings_instance.set('output_dir', self.output_dir)
+            Settings.instance().set('output_dir', self.output_dir)
             if self.input_file is not None and self.output_dir is not None:
                 self.initialized = True
             self.close_window()
 
     def get_args(self):
-        return [self.input_file.get(), self.output_dir.get(), self.roi_data, self.initialized]
+        return { "input_file": self.input_file.get(), "output_dir": self.output_dir.get(), "roi" : self.roi_data}
 
     def close_window(self):
         print("close window")
@@ -170,7 +170,7 @@ class MainWindow:
         self.figure_data.clear()
         self.roi_selectors.clear()
         self.image_containers.clear()
-        settings_instance.save()
+        Settings.instance().save()
         self.root.destroy()
 
     def on_input_file_browse_button_click(self, event):
@@ -180,13 +180,13 @@ class MainWindow:
             filetypes=(("ND2 files", "*.nd2"),)  # Filters file types
         )
         self.input_file.set(dialog_result)
-        settings_instance.set('input_file', self.input_file.get())
+        Settings.instance().set('input_file', self.input_file.get())
 
     def on_output_dir_browse_button_click(self, event):
         dialog_result = filedialog.askdirectory(initialdir=os.getcwd(),  # Sets the initial directory
                                 title="Select output directory")  # Sets the dialog title
         self.output_dir.set(dialog_result)
-        settings_instance.set('output_dir', self.output_dir.get())
+        Settings.instance().set('output_dir', self.output_dir.get())
 
     def add_images_frame(self):
         # Don't use PanedWindow - just use regular frames
