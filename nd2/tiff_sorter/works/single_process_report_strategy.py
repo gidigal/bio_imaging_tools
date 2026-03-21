@@ -1,5 +1,7 @@
 from works.report_strategy import ReportStrategy
 from profiling.profiler import Profiler
+import os
+import time
 
 
 class SingleProcessReportStrategy(ReportStrategy):
@@ -11,7 +13,7 @@ class SingleProcessReportStrategy(ReportStrategy):
         self.queue.put('Read')
 
     def report_time(self, key, reported_time):
-        Profiler.instance().inc(key, reported_time)
+        Profiler.instance().inc(key, reported_time, os.getpid())
 
     def write_progress(self):
         self.queue.put('Write')

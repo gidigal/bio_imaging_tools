@@ -1,5 +1,6 @@
 {
     "input_file": "D:/Gidi/weizmann/alex/samples/10_23_25_clp_PBS_test.nd2",
     "output_dir": "D:/Gidi/weizmann/alex/ND2TiffExporter/python/split_channels/output",
-    "roi_skip_empty": "true"
+    "roi_skip_empty": "true",
+    "pivlab_root": "D:/pivlab/PIVlab-3.12.001"
 }
