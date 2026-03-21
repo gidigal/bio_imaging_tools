@@ -21,4 +21,10 @@ class SingleProcessReportStrategy(ReportStrategy):
     def matlab_progress(self):
         self.queue.put('Pivlab calls')
 
+    def mean_progress(self):
+        self.queue.put('Mean')
+
+    def mean_write_progress(self):
+        self.queue.put('Mean Write')
+
 

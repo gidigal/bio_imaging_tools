@@ -1,4 +1,5 @@
 from nd2reader import ND2Reader
+from nd2 import ND2File
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
@@ -45,6 +46,10 @@ def get_channel_dir(output_dir,  multipoint, channel, roi):
         x_min, y_min, x_max, y_max = roi
         directory_name += f"_ROI_{x_min}_{y_min}_{x_max}_{y_max}"
     return os.path.join(output_dir, directory_name)
+
+def get_experiment_interval_ms(input_file):
+    with ND2File(input_file) as f:
+        return f.experiment[0].parameters.periodMs
 
 
 class ND2Wrapper:
@@ -133,6 +138,12 @@ class ND2Wrapper:
             report_strategy.report_time('read', time.time() - read_start)
             report_strategy.read_progress()
             yield img
+
+    def nd2_z_axis_profile_generator(self, read_generator, report_strategy):
+        for frame in read_generator:
+            res = frame.mean()
+            report_strategy.mean_progress()
+            yield res
 
     def nd2_images_writer_generator(self, read_generator, channel_dir, report_strategy):
         frame_idx = 0

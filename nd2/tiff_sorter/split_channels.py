@@ -25,7 +25,8 @@ def parse_args(args):
             res['piv_params_file'] = args[i + 1]
         if args[i] == '-roi_file' and i < len(args) - 1:
             res['roi_file'] = args[i + 1]
-
+        if args[i] == '-z_axis_profile_output_dir' and i < len(args) - 1:
+            res['z_axis_profile_output_dir'] = args[i + 1]
     return res
 
 

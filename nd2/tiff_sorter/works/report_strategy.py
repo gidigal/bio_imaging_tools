@@ -19,4 +19,12 @@ class ReportStrategy(ABC):
     def matlab_progress(self):
         pass
 
+    @abstractmethod
+    def mean_progress(self):
+        pass
+
+    @abstractmethod
+    def mean_write_progress(self):
+        pass
+
 

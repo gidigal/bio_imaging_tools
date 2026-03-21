@@ -17,3 +17,9 @@ class MultiProcessReportStrategy(ReportStrategy):
 
     def matlab_progress(self):
         self.queue.put({'type': 'progress', 'progress_type': 'Pivlab calls'})
+
+    def mean_progress(self):
+        self.queue.put({'type': 'progress', 'progress_type': 'Mean'})
+
+    def mean_write_progress(self):
+        self.queue.put({'type': 'progress', 'progress_type': 'Mean Write'})

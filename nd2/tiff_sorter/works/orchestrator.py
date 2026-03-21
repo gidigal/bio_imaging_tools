@@ -28,6 +28,11 @@ class Orchestrator(ABC):
             pairs_number = self.nd2_wrapper.get_total_plane_pairs()
             data['Pivlab calls'] = { 'maximum': pairs_number, 'units': 'frame pairs' }
             order.append('Pivlab calls')
+        if 'z_axis_profile_output_dir' in self.args_dict.keys():
+            multipoint_channel_pairs = self.nd2_wrapper.get_multipoints_number()*self.nd2_wrapper.get_channels_number()
+            data['Mean'] = { 'maximum': frames, 'units': 'frames'}
+            data['Mean Write'] = { 'maximum' : multipoint_channel_pairs, 'units' : 'series' }
+            order.append(['Mean', 'Mean Write'])
         return [data, order]
 
     def should_handle_series(self, multipoint, channel):

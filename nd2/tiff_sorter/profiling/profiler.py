@@ -66,7 +66,7 @@ class Profiler:
     def get_processes_order(self):
         res = []
         if len(self.processes) == 1:
-            res = [self.processes[next(iter(self.processes.keys()))]]
+            res = [next(iter(self.processes.keys()))]
         else:
             # Find the process with read time 0. That is the main process. We want to display its data first,
             # our main interest is in its total time
@@ -80,6 +80,7 @@ class Profiler:
     def summary(self):
         summary_message = ''
         processes_order = self.get_processes_order()
+        print('processes order: ' + str(processes_order))
         for process_id in processes_order:
             current = self.processes[process_id]
             total_time = current['end'] - current['start']
