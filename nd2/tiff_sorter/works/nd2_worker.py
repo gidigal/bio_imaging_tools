@@ -121,7 +121,6 @@ class ND2Worker:
 
     def run_z_axis_profile(self):
         mean_results = list(self.mean_generator)
-        print('mean results: ' + str(mean_results))
         self.save_mean(mean_results)
         self.report_strategy.mean_write_progress()
 

@@ -22,6 +22,7 @@ class Profiler:
         self.processes = {}
         self.running_processes = 0
         self.done_processes = 0
+        self.total_times = {}
 
     def init_process(self, process_id):
         counters = ['read', 'write', 'matlab_start', 'matlab_add_path', 'convert_to_matlab_format',
@@ -36,7 +37,8 @@ class Profiler:
         self.running_processes += 1
 
     def end(self, process_id, end_time):
-        self.processes[process_id]['end'] = end_time
+        total_time = end_time - self.processes[process_id].pop('start')
+        self.total_times[process_id] = total_time
         self.done_processes += 1
         if self.running_processes == self.done_processes:
             self.summary()
@@ -58,10 +60,10 @@ class Profiler:
         res = 0
         current = {}
         if len(self.processes) == 1:
-            current = self.processes[next(iter(self.processes.keys()))]
+            res = self.total_times[next(iter(self.processes.keys()))]
         else:
-            current = self.processes[self.find_main_process()]
-        return current['end']-current['start']
+            res = self.total_times[self.find_main_process()]
+        return res
 
     def get_processes_order(self):
         res = []
@@ -80,14 +82,13 @@ class Profiler:
     def summary(self):
         summary_message = ''
         processes_order = self.get_processes_order()
-        print('processes order: ' + str(processes_order))
         for process_id in processes_order:
             current = self.processes[process_id]
-            total_time = current['end'] - current['start']
-            summary_message += f"\n=== Performance Summary ===\n" + f"Total time: {total_time:.2f} seconds"
+            total_time = self.total_times[process_id]
+            summary_message += f"\n=== Performance Summary ===\n" + f"Total time: {total_time:.2f} seconds\n"
             for key in current.keys():
                 value = current[key]
-                summary_message += f"{key} time: {value:.2f} seconds {(value / total_time) * 100:.2f} %"
+                summary_message += f"{key} time: {value:.2f} seconds {(value / total_time) * 100:.2f} %\n"
         print(summary_message)
 
 
