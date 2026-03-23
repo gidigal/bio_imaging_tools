@@ -13,11 +13,12 @@ from profiling.profiler import Profiler
 from gui.progress_window import ProgressWindow
 from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
 
+
 def handle_tasks(args):
     (tasks, queue, args_dict) = args
     report_strategy = MultiProcessReportStrategy(queue)
     pivlab_stream_processor = None
-    if 'matlab_output_dir' in args_dict.keys()
+    if 'matlab_output_dir' in args_dict.keys():
         pivlab_stream_processor = PIVlabStreamProcessor(report_strategy)
     for [multipoint, channel] in tasks:
         nd2_worker = ND2Worker(multipoint, channel, args_dict, report_strategy, pivlab_stream_processor)
@@ -31,13 +32,13 @@ def poll_messages(queue, ui_queue):
 
     while len(done_processes) > 0 and len(done_processes) != len(running_processes):
         try:
-            item = self.queue.get(block=False)
+            item = queue.get(block=False)
             if item['type'] == 'Done':
                 done_processes.add(item['process_id'])
                 Profiler.instance().end(item['process_id'], item['reported_time'])
             else:
                 if item['type'] == 'progress':
-                    self.ui_queue.put(item['progress_type'])
+                    ui_queue.put(item['progress_type'])
                 else:
                     if item['type'] == 'profiler':
                         process_id = item['process_id']
