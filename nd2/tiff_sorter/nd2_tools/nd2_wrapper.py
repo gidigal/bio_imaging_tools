@@ -7,6 +7,7 @@ import time
 import os
 import tifffile
 from config.settings import Settings
+from profiling.profiler import Profiler
 
 
 def convert_to_pil_image(frame_data):
@@ -135,7 +136,7 @@ class ND2Wrapper:
         for t in range(num_frames):
             read_start = time.time()
             img = self.get_image(multipoint, channel, t, roi=roi)
-            report_strategy.report_time('read', time.time() - read_start)
+            Profiler.instance().inc('read', time.time() - read_start)
             report_strategy.read_progress()
             yield img
 
@@ -152,7 +153,7 @@ class ND2Wrapper:
             output_path = os.path.join(channel_dir, f"img_{frame_idx:04d}.tif")
             write_start = time.time()
             tifffile.imwrite(output_path, image, photometric='minisblack')
-            report_strategy.report_time('write', time.time() - write_start)
+            Profiler.instance().inc('write', time.time() - write_start)
             report_strategy.write_progress()
             frame_idx += 1
             yield image

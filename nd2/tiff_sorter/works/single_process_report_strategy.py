@@ -12,9 +12,6 @@ class SingleProcessReportStrategy(ReportStrategy):
     def read_progress(self):
         self.queue.put('Read')
 
-    def report_time(self, key, reported_time):
-        Profiler.instance().inc(key, reported_time, os.getpid())
-
     def write_progress(self):
         self.queue.put('Write')
 

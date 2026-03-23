@@ -9,9 +9,6 @@ class MultiProcessReportStrategy(ReportStrategy):
     def read_progress(self):
         self.queue.put({'type': 'progress', 'progress_type': 'Read'})
 
-    def report_time(self, key, reported_time):
-        self.queue.put({'type': 'profiler', 'key': key, 'reported_time': reported_time, 'process_id': os.getpid()})
-
     def write_progress(self):
         self.queue.put({'type': 'progress', 'progress_type': 'Write'})
 

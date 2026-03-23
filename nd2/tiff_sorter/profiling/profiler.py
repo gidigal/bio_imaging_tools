@@ -1,4 +1,15 @@
+import os
 import time
+
+
+def get_summary_message(summary_data):
+    process_id = summary_data.pop('process_id')
+    total_time = summary_data.pop('total_time')
+    summary_message = f"Profiling data for process {process_id}\n-------------------------------\n"
+    summary_message += f"Total time: {total_time}\n"
+    for key in summary_data.keys():
+        summary_message += f"{key} : {summary_data[key]:.2f} seconds {(summary_data[key] / total_time) * 100:.2f}%\n"
+    return summary_message
 
 
 class Profiler:
@@ -15,80 +26,49 @@ class Profiler:
     def refresh(cls):
         cls._instance = cls()
 
-    def inc(self, key, value, process_id):
-        self.processes[process_id][key] += value
+    def inc(self, key, value):
+        self.counters[key] += value
 
     def __init__(self):
-        self.processes = {}
-        self.running_processes = 0
-        self.done_processes = 0
         self.total_times = {}
+        self.print_summary = True
+        self.counters = None
+        self.start_time = None
+        self.end_time = None
 
-    def init_process(self, process_id):
+    def get_print_summary(self):
+        return self.print_summary
+
+    def set_print_summary(self, value):
+        self.print_summary = value
+
+    def init(self):
         counters = ['read', 'write', 'matlab_start', 'matlab_add_path', 'convert_to_matlab_format',
                     'dict_to_matlab_struct', 'process_single_pair_pivlab', 'convert_back_to_python']
         default_value = 0
         new_dict = dict.fromkeys(counters, default_value)
-        self.processes[process_id] = new_dict
+        self.counters = new_dict
 
-    def start(self, process_id, start_time):
-        self.init_process(process_id)
-        self.processes[process_id]['start'] = start_time
-        self.running_processes += 1
+    def start(self, start_time):
+        self.start_time = start_time
+        self.init()
 
-    def end(self, process_id, end_time):
-        total_time = end_time - self.processes[process_id].pop('start')
-        self.total_times[process_id] = total_time
-        self.done_processes += 1
-        if self.running_processes == self.done_processes:
+    def end(self, end_time):
+        self.end_time = end_time
+        if self.print_summary:
             self.summary()
 
-    def find_main_process(self):
-        res = None
-        for key in self.processes.keys():
-            if self.processes[key]['read'] == 0:
-                res = key
-                break
-        if res is None:
-            print('!!!!!!!\nMain process was not found. We will not be able to conclude what was the total time taken'
-                  ' to perform the computation\n!!!!!!!')
-            # Take arbitrary process as main process
-            res = [self.processes[next(iter(self.processes.keys()))]]
-        return res
-
     def get_total_time(self):
-        res = 0
-        current = {}
-        if len(self.processes) == 1:
-            res = self.total_times[next(iter(self.processes.keys()))]
-        else:
-            res = self.total_times[self.find_main_process()]
-        return res
+        return self.end_time - self.start_time
 
-    def get_processes_order(self):
-        res = []
-        if len(self.processes) == 1:
-            res = [next(iter(self.processes.keys()))]
-        else:
-            # Find the process with read time 0. That is the main process. We want to display its data first,
-            # our main interest is in its total time
-            main_process_id = self.find_main_process()
-            res.append(main_process_id)
-            for key in self.processes.keys():
-                if key != main_process_id:
-                    res.append(key)
+    def get_summary_data(self):
+        res = self.counters.copy()
+        res['process_id'] = os.getpid()
+        res['total_time'] = self.get_total_time()
         return res
 
     def summary(self):
-        summary_message = ''
-        processes_order = self.get_processes_order()
-        for process_id in processes_order:
-            current = self.processes[process_id]
-            total_time = self.total_times[process_id]
-            summary_message += f"\n=== Performance Summary ===\nProcess id: {process_id}\n" + f"Total time: {total_time:.2f} seconds\n"
-            for key in current.keys():
-                value = current[key]
-                summary_message += f"{key} time: {value:.2f} seconds {(value / total_time) * 100:.2f} %\n"
-        print(summary_message)
+        data = self.get_summary_data()
+        print(get_summary_message(data))
 
 

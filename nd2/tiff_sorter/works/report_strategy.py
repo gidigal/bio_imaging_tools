@@ -8,10 +8,6 @@ class ReportStrategy(ABC):
         pass
 
     @abstractmethod
-    def report_time(self, key, reported_time):
-        pass
-
-    @abstractmethod
     def write_progress(self):
         pass
 
