@@ -16,7 +16,7 @@ class Profiler:
         cls._instance = cls()
 
     def inc(self, key, value, process_id):
-        self.processes[process_id][key] = value
+        self.processes[process_id][key] += value
 
     def __init__(self):
         self.processes = {}
@@ -85,7 +85,7 @@ class Profiler:
         for process_id in processes_order:
             current = self.processes[process_id]
             total_time = self.total_times[process_id]
-            summary_message += f"\n=== Performance Summary ===\n" + f"Total time: {total_time:.2f} seconds\n"
+            summary_message += f"\n=== Performance Summary ===\nProcess id: {process_id}\n" + f"Total time: {total_time:.2f} seconds\n"
             for key in current.keys():
                 value = current[key]
                 summary_message += f"{key} time: {value:.2f} seconds {(value / total_time) * 100:.2f} %\n"

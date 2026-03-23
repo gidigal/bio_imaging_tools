@@ -8,7 +8,6 @@ import numpy as np
 import time
 from pathlib import Path
 from config.settings import Settings
-from profiling.profiler import Profiler
 
 
 class PIVlabStreamProcessor:
@@ -17,8 +16,9 @@ class PIVlabStreamProcessor:
     Only 2 frames in memory at a time
     """
     
-    def __init__(self):
+    def __init__(self, report_strategy):
         self.eng = None
+        self.report_strategy = report_strategy
         
     def start_matlab(self):
         """Start MATLAB engine"""
@@ -26,14 +26,14 @@ class PIVlabStreamProcessor:
             print("Starting MATLAB engine...")
             matlab_start = time.time()
             self.eng = matlab.engine.start_matlab()
-            Profiler.instance().inc('matlab_start',  time.time()-matlab_start)
+            self.report_strategy.report_time('matlab_start',  time.time()-matlab_start)            
             print("✓ MATLAB engine started")
             matlab_add_path = time.time()
             current_dir = str(Path(__file__).parent.absolute())
             self.eng.addpath(current_dir, nargout=0)
             pivlab_root = Settings.instance().get('pivlab_root')
             self.eng.addpath(pivlab_root)
-            Profiler.instance().inc('matlab_add_path', time.time()-matlab_add_path)
+            self.report_strategy.report_time('matlab_add_path', time.time()-matlab_add_path)
         
         return self.eng
     
@@ -115,12 +115,10 @@ class PIVlabStreamProcessor:
 
         t5 = time.time()
 
-        Profiler.instance().inc('convert_to_matlab_format', t2-t1)
-        Profiler.instance().inc('dict_to_matlab_struct', t3 - t2)
-        Profiler.instance().inc('process_single_pair_pivlab', t4 - t3)
-        Profiler.instance().inc('convert_back_to_python', t5 - t4)
-
-        
+        self.report_strategy.report_time('convert_to_matlab_format', t2-t1)
+        self.report_strategy.report_time('dict_to_matlab_struct', t3 - t2)
+        self.report_strategy.report_time('process_single_pair_pivlab', t4 - t3)
+        self.report_strategy.report_time('convert_back_to_python', t5 - t4)
         return result
     
     def process_image_generator(self, image_generator, piv_params, report_strategy):

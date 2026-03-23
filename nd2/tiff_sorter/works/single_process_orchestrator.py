@@ -9,6 +9,7 @@ import queue
 import threading
 import time
 import os
+from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
 
 class SingleProcessOrchestrator(Orchestrator):
     def __init__(self, args_dict):
@@ -17,6 +18,7 @@ class SingleProcessOrchestrator(Orchestrator):
         self.nd2_wrapper = ND2Wrapper.instance(args_dict['input_file'])
         self.image_series = self.nd2_wrapper.get_multipoints_number()*self.nd2_wrapper.get_channels_number()
         self.report_strategy = None
+        self.pivlab_stream_processor = None
         self.velocities = {}
 
         self.progress_window = None
@@ -28,6 +30,7 @@ class SingleProcessOrchestrator(Orchestrator):
 
     def run_workers(self):
         self.report_strategy = SingleProcessReportStrategy(self.queue)
+        self.pivlab_stream_processor = PIVlabStreamProcessor(self.report_strategy)
         for worker in self.worker_generator(self.args_dict,
                                             self.nd2_wrapper.get_multipoints_number(),
                                             self.nd2_wrapper.get_channels_number()):

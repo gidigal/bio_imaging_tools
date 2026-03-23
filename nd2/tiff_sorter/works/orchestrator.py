@@ -2,15 +2,13 @@ from abc import ABC, abstractmethod
 from nd2_tools.nd2_wrapper import ND2Wrapper
 import json
 from config.settings import Settings
-from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
 
 
 class Orchestrator(ABC):
 
     def __init__(self, args_dict):
         self.args_dict = args_dict
-        self.nd2_wrapper = ND2Wrapper(args_dict['input_file'])
-        self.pivlab_stream_processor = PIVlabStreamProcessor()
+        self.nd2_wrapper = ND2Wrapper(args_dict['input_file'])        
         if 'roi_file' in self.args_dict:
             with open(self.args_dict['roi_fie'], 'r') as roi_file:
                 self.args_dict['roi'] = json.load(roi_file)
