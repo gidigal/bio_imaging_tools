@@ -30,7 +30,8 @@ class SingleProcessOrchestrator(Orchestrator):
 
     def run_workers(self):
         self.report_strategy = SingleProcessReportStrategy(self.queue)
-        self.pivlab_stream_processor = PIVlabStreamProcessor(self.report_strategy)
+        if 'matlab_output_dir' in self.args_dict.keys():
+            self.pivlab_stream_processor = PIVlabStreamProcessor(self.report_strategy)
         for worker in self.worker_generator(self.args_dict,
                                             self.nd2_wrapper.get_multipoints_number(),
                                             self.nd2_wrapper.get_channels_number()):

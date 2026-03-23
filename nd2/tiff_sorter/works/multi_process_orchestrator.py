@@ -16,7 +16,9 @@ from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
 def handle_tasks(args):
     (tasks, queue, args_dict) = args
     report_strategy = MultiProcessReportStrategy(queue)
-    pivlab_stream_processor = PIVlabStreamProcessor(report_strategy)
+    pivlab_stream_processor = None
+    if 'matlab_output_dir' in args_dict.keys()
+        pivlab_stream_processor = PIVlabStreamProcessor(report_strategy)
     for [multipoint, channel] in tasks:
         nd2_worker = ND2Worker(multipoint, channel, args_dict, report_strategy, pivlab_stream_processor)
         nd2_worker.run()
