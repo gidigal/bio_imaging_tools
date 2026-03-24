@@ -8,7 +8,10 @@ def get_summary_message(summary_data):
     summary_message = f"Profiling data for process {process_id}\n-------------------------------\n"
     summary_message += f"Total time: {total_time}\n"
     for key in summary_data.keys():
-        summary_message += f"{key} : {summary_data[key]:.2f} seconds {(summary_data[key] / total_time) * 100:.2f}%\n"
+        percentage = 0
+        if total_time > 0:
+            percentage = (summary_data[key] / total_time) * 100
+        summary_message += f"{key} : {summary_data[key]:.2f} seconds {percentage:.2f}%\n"
     return summary_message
 
 

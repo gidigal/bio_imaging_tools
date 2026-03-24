@@ -3,7 +3,6 @@ from nd2_tools.nd2_wrapper import get_experiment_interval_ms
 from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
 from matlab_integration.save_to_mat import save_results_to_mat
 import json
-import numpy as np
 import collections
 import os
 import csv
@@ -30,6 +29,7 @@ class ND2Worker:
         self.mean_generator = None
         self.nd2_wrapper = ND2Wrapper.instance(self.args_dict["input_file"])
         self.pivlab_stream_processor = pivlab_stream_processor
+        self.mean_results = None
 
     def get_multipoint(self):
         return self.multipoint
@@ -47,7 +47,8 @@ class ND2Worker:
         return 'matlab_output_dir' in self.args_dict.keys()
 
     def should_z_axis_profile(self):
-        return 'z_axis_profile_output_dir' in self.args_dict.keys()
+        keys = self.args_dict.keys()
+        return 'z_axis_profile_output_dir' in keys or 'z_axis_profile_plot' in keys
 
     def prepare_generator(self):
         roi = None
@@ -78,12 +79,11 @@ class ND2Worker:
                 piv_params = json.load(piv_params_file)
             piv_params['cal_fact'] = calibration['pixel_size_um'] / calibration['mag'] / calibration['time_step']
             self.matlab_generator = self.pivlab_stream_processor.process_image_generator(self.rw_generator,
-                                                                                    piv_params,
-                                                                                    self.report_strategy)
+                                                                                         piv_params,
+                                                                                         self.report_strategy)
         if self.should_z_axis_profile():
             self.mean_generator = (
                 self.nd2_wrapper.nd2_z_axis_profile_generator(self.rw_generator, self.report_strategy))
-
 
     def save(self, matlab_results):
         matlab_output_dir = self.args_dict['matlab_output_dir']
@@ -91,7 +91,7 @@ class ND2Worker:
         frames = self.nd2_wrapper.get_timepoints()
         channel_name = self.nd2_wrapper.get_channel_names()[self.channel]
         matlab_output_file = (matlab_output_dir + "\\" +
-                             f"multipoint_{self.multipoint}_channel_{channel_name}_{frames}_frames.mat")
+                              f"multipoint_{self.multipoint}_channel_{channel_name}_{frames}_frames.mat")
         save_results_to_mat(matlab_results, matlab_output_file)
 
     def save_mean(self, mean_results):
@@ -100,8 +100,8 @@ class ND2Worker:
         channel_name = self.nd2_wrapper.get_channel_names()[self.channel]
         frames = self.nd2_wrapper.get_timepoints()
         output_file = (mean_output_dir + "\\" +
-                        f"z_profile_multipoint_{self.multipoint}_channel_{channel_name}_{frames}_frames.csv")
-        experiment_interval_sec = get_experiment_interval_ms(self.nd2_wrapper.get_input_file())/1000.0
+                       f"z_profile_multipoint_{self.multipoint}_channel_{channel_name}_{frames}_frames.csv")
+        experiment_interval_sec = get_experiment_interval_ms(self.nd2_wrapper.get_input_file()) / 1000.0
         csv_content = generate_z_profile_csv(mean_results, experiment_interval_sec)
         with open(output_file, "w", newline="") as f:
             f.write(csv_content)
@@ -119,9 +119,12 @@ class ND2Worker:
     def run_tiff_extraction(self):
         collections.deque(self.rw_generator, maxlen=0)
 
+    def get_mean_results(self):
+        return self.mean_results
+
     def run_z_axis_profile(self):
-        mean_results = list(self.mean_generator)
-        self.save_mean(mean_results)
+        self.mean_results = list(self.mean_generator)
+        self.save_mean(self.mean_results)
         self.report_strategy.mean_write_progress()
 
     def run(self):
@@ -133,4 +136,3 @@ class ND2Worker:
                 self.run_tiff_extraction()
             else:
                 self.run_z_axis_profile()
-

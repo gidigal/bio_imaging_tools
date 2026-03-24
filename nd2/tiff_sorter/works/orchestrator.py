@@ -16,18 +16,25 @@ class Orchestrator(ABC):
         [self.progress_data, self.progress_order] = self.get_progress_bars_data()
 
     def get_progress_bars_data(self):
-        frames = self.nd2_wrapper.get_total_planes()
+        timepoints = self.nd2_wrapper.get_timepoints()
+        multipoints = self.nd2_wrapper.get_multipoints_number()
+        if 'multipoints' in self.args_dict.keys():
+            multipoints = len(self.args_dict['multipoints'])
+        channels = self.nd2_wrapper.get_channels_number()
+        if 'channels' in self.args_dict.keys():
+            channels = len(self.args_dict['channels'])
+        frames = multipoints*channels*timepoints
         data = { 'Read': {'maximum': frames, 'units': 'frames'} }
         order = ['Read']
         if 'output_dir' in self.args_dict.keys():
             data['Write'] = { 'maximum': frames, 'units': 'frames' }
             order.append('Write')
         if 'matlab_output_dir' in self.args_dict.keys():
-            pairs_number = self.nd2_wrapper.get_total_plane_pairs()
+            pairs_number = multipoints*channels*(timepoints-1)
             data['Pivlab calls'] = { 'maximum': pairs_number, 'units': 'frame pairs' }
             order.append('Pivlab calls')
         if 'z_axis_profile_output_dir' in self.args_dict.keys():
-            multipoint_channel_pairs = self.nd2_wrapper.get_multipoints_number()*self.nd2_wrapper.get_channels_number()
+            multipoint_channel_pairs = multipoints*channels
             data['Mean'] = { 'maximum': frames, 'units': 'frames'}
             data['Mean Write'] = { 'maximum' : multipoint_channel_pairs, 'units' : 'series' }
             order.append(['Mean', 'Mean Write'])
@@ -46,8 +53,10 @@ class Orchestrator(ABC):
     def get_multipoint_channel_generator(self):
         multipoints = self.nd2_wrapper.get_multipoints_number()
         channels = self.nd2_wrapper.get_channels_number()
-        for multipoint in range(multipoints):
-            for channel in range(channels):
+        multipoints_vals = range(multipoints) if 'multipoints' not in self.args_dict.keys() else self.args_dict['multipoints']
+        channel_vals = range(channels) if 'channels' not in self.args_dict.keys() else self.args_dict['channels']
+        for multipoint in multipoints_vals:
+            for channel in channel_vals:
                 if self.should_handle_series(multipoint, channel):
                     yield [multipoint, channel]
 

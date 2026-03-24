@@ -41,14 +41,16 @@ class ProgressWindow:
         progress_entry['units'].config(text=f"{progress_entry['counter']}/{self.data[title]['maximum']} {self.data[title]['units']}")
 
     def poll_queue(self):
-        try:
-            msg = self.queue.get_nowait()  # non-blocking check
-            if msg == 'Quit':
-                self.close()
-            else:
-                self.inc(msg)
-        except queue.Empty:
-            pass
+        while True:
+            try:
+                msg = self.queue.get_nowait()  # non-blocking check
+                if msg == 'Quit':
+                    self.close()
+                    return
+                else:
+                    self.inc(msg)
+            except queue.Empty:
+                break
         self.root.after(100, self.poll_queue)
 
     def start(self):
@@ -58,4 +60,5 @@ class ProgressWindow:
         self.root.mainloop()
 
     def close(self):
+        self.root.quit()
         self.root.destroy()

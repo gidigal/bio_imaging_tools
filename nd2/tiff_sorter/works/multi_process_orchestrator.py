@@ -4,6 +4,7 @@ from nd2_tools.nd2_wrapper import ND2Wrapper
 import time
 from profiling.profiler import Profiler, get_summary_message
 from gui.progress_window import ProgressWindow
+from gui.z_axis_profile_window import ZAxisProfileWindow
 from works.run_workers_thread import RunWorkersThread
 
 
@@ -26,9 +27,11 @@ class MultiProcessOrchestrator(Orchestrator):
         Profiler.instance().end(time.time())
         if Profiler.instance().get_print_summary() is True:
             print('Additional processes profiling data:')
-            for result in run_workers_thread.results:
+            for result in run_workers_thread.profiler_results:
                 print(get_summary_message(result) + '\n')
-
+        if 'z_axis_profile_plot' in self.args_dict.keys():
+            z_axis_profile_window = ZAxisProfileWindow(run_workers_thread.mean_results, self.args_dict['input_file'])
+            z_axis_profile_window.start()
 
 
 

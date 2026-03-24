@@ -16,14 +16,21 @@ def handle_tasks(args):
     Profiler.instance().set_print_summary(False)
     Profiler.instance().start(time.time())
     pivlab_stream_processor = None
+    should_z_axis_profile = 'z_axis_profile_plot' in args_dict.keys()
+    mean_results = []
     if 'matlab_output_dir' in args_dict.keys():
         pivlab_stream_processor = PIVlabStreamProcessor(report_strategy)
     for [multipoint, channel] in tasks:
         nd2_worker = ND2Worker(multipoint, channel, args_dict, report_strategy, pivlab_stream_processor)
         nd2_worker.run()
+        if should_z_axis_profile:
+            mean_results.append({'multipoint': multipoint, 'channel': channel, 'mean_results': nd2_worker.get_mean_results()})
     queue.put({'type': 'Done'})
     Profiler.instance().end(time.time())
-    return Profiler.instance().get_summary_data()
+    res = { 'profiler' : Profiler.instance().get_summary_data()}
+    if should_z_axis_profile:
+        res['z_axis_profile'] = mean_results
+    return res
 
 
 def poll_messages(queue, ui_queue, tasks_number):
@@ -47,14 +54,18 @@ class RunWorkersThread(threading.Thread):
         self.multipoint_channel_generator = multipoint_channel_generator
         self.ui_queue = ui_queue
         self.args_dict = args_dict
-        self.results = None
+        self.profiler_results = None
+        self.mean_results = None
 
     def get_tasks(self):
         cores = os.cpu_count()
-        res = [[] for _ in range(cores)]
+        res = []
         core_index = 0
         for [multipoint, channel] in self.multipoint_channel_generator:
-            res[core_index].append([multipoint, channel])
+            if core_index == len(res):
+                res.append([[multipoint, channel]])
+            else:
+                res[core_index].append([multipoint, channel])
             core_index = (core_index + 1) % cores
         return res
 
@@ -67,10 +78,14 @@ class RunWorkersThread(threading.Thread):
             with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
                 futures = [executor.submit(handle_tasks, arg) for arg in args]
                 poll_messages(queue, self.ui_queue, tasks_number)
-                res = []
+                profiler_results = []
+                mean_results = []
                 for future in as_completed(futures):
-                    res.append(future.result())
-        return res
+                    profiler_results.append(future.result()['profiler'])
+                    if 'z_axis_profile_plot' in self.args_dict.keys():
+                        mean_results.extend(future.result()['z_axis_profile'])
+        mean_results = sorted(mean_results, key=lambda d: (d['multipoint'], d['channel']))
+        return [profiler_results, mean_results]
 
     def run(self):
-        self.results = self.run_workers()
+        [self.profiler_results, self.mean_results] = self.run_workers()

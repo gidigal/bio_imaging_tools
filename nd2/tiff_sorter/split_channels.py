@@ -3,8 +3,10 @@ from gui.main_window import MainWindow
 from nd2_tools.nd2_manager import ND2Manager
 import os.path
 from works.single_process_orchestrator import SingleProcessOrchestrator
+from works.multi_process_orchestrator import MultiProcessOrchestrator
 import json
-
+import ast
+import numbers
 
 def show_ui(args):
     return len(args) > 0 and args[0] == '-ui'
@@ -27,6 +29,21 @@ def parse_args(args):
             res['roi_file'] = args[i + 1]
         if args[i] == '-z_axis_profile_output_dir' and i < len(args) - 1:
             res['z_axis_profile_output_dir'] = args[i + 1]
+        if args[i] == '-z_axis_profile_plot':
+            res['z_axis_profile_plot'] = True
+        if args[i].startswith("-multipoints="):
+            multipoints = ast.literal_eval(args[i].split('=')[1])
+            if isinstance(multipoints, numbers.Number):
+                res['multipoints'] = [multipoints]
+            else:
+                res['multipoints'] = multipoints
+        if args[i].startswith("-channels="):
+            channels = ast.literal_eval(args[i].split('=')[1])
+            if isinstance(channels, numbers.Number):
+                res['channels'] = [channels]
+            else:
+                res['channels'] = channels
+
     return res
 
 
