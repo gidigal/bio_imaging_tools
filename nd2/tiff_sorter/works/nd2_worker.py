@@ -70,7 +70,7 @@ class ND2Worker:
                                                                              self.report_strategy)
         if self.should_run_matlab():
             if self.pivlab_stream_processor is None:
-                self.pivlab_stream_processor = PIVlabStreamProcessor()
+                self.pivlab_stream_processor = PIVlabStreamProcessor(self.report_strategy)
             calibration = None
             with open(self.args_dict['calibration_file'], 'r') as calibration_file:
                 calibration = json.load(calibration_file)
