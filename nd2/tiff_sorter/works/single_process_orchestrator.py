@@ -10,13 +10,16 @@ import queue
 import threading
 import time
 import os
+from arguments.arguments import Arguments
 from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
+from arguments.arguments import Arguments
+
 
 class SingleProcessOrchestrator(Orchestrator):
-    def __init__(self, args_dict):
-        super().__init__(args_dict)
-        self.args_dict = args_dict
-        self.nd2_wrapper = ND2Wrapper.instance(args_dict['input_file'])
+    def __init__(self):
+        super().__init__()
+        arguments = Arguments.instance()
+        self.nd2_wrapper = ND2Wrapper.instance(arguments.input_file)
         self.image_series = self.nd2_wrapper.get_multipoints_number()*self.nd2_wrapper.get_channels_number()
         self.report_strategy = None
         self.pivlab_stream_processor = None
@@ -25,22 +28,19 @@ class SingleProcessOrchestrator(Orchestrator):
         self.progress_window = None
         self.queue = queue.Queue()
 
-    def worker_generator(self, args_dict, multipoints, channels):
+    def worker_generator(self, multipoints, channels):
         for [multipoint, channel] in self.get_multipoint_channel_generator():
-            yield ND2Worker(multipoint, channel, args_dict, self.report_strategy, self.pivlab_stream_processor)
-
-    def should_plot_z_axis_profile(self):
-        return 'z_axis_profile_plot' in self.args_dict.keys()
+            yield ND2Worker(multipoint, channel, self.report_strategy, self.pivlab_stream_processor)
 
     def run_workers(self):
+        arguments = Arguments.instance()
+        z_axis_profile_plot = arguments.z_axis_profile_plot
         self.report_strategy = SingleProcessReportStrategy(self.queue)
-        if 'matlab_output_dir' in self.args_dict.keys():
+        if arguments.matlab_output_dir:
             self.pivlab_stream_processor = PIVlabStreamProcessor(self.report_strategy)
-        z_axis_profile_plot = self.should_plot_z_axis_profile()
         if z_axis_profile_plot is True:
             self.mean_results = []
-        for worker in self.worker_generator(self.args_dict,
-                                            self.nd2_wrapper.get_multipoints_number(),
+        for worker in self.worker_generator(self.nd2_wrapper.get_multipoints_number(),
                                             self.nd2_wrapper.get_channels_number()):
             worker.run()
             if z_axis_profile_plot is True:
@@ -52,10 +52,15 @@ class SingleProcessOrchestrator(Orchestrator):
     def run(self):
         Profiler.instance().start(time.time())
         self.progress_window = ProgressWindow(self.progress_data, self.progress_order, self.queue)
-        threading.Thread(target=self.run_workers, daemon=True).start()
+        run_workers_thread = threading.Thread(target=self.run_workers, daemon=True)
+        run_workers_thread.start()
         self.progress_window.start()
+        if self.progress_window.aborted:
+            print('aborted !')
+            return
         Profiler.instance().end(time.time())
-        if 'z_axis_profile_plot' in self.args_dict.keys():
-            z_axis_profile_window = ZAxisProfileWindow(self.mean_results, self.args_dict['input_file'])
+        arguments = Arguments.instance()
+        if arguments.z_axis_profile_plot is True:
+            z_axis_profile_window = ZAxisProfileWindow(self.mean_results, arguments.input_file)
             z_axis_profile_window.start()
 
