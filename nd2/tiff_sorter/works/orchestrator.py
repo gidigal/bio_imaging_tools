@@ -1,66 +1,60 @@
 from abc import ABC, abstractmethod
 from nd2_tools.nd2_wrapper import ND2Wrapper
-import json
 from config.settings import Settings
+from arguments.arguments import Arguments
 
 
 class Orchestrator(ABC):
 
-    def __init__(self, args_dict):
-        self.args_dict = args_dict
-        self.nd2_wrapper = ND2Wrapper(args_dict['input_file'])        
-        if 'roi_file' in self.args_dict:
-            with open(self.args_dict['roi_fie'], 'r') as roi_file:
-                self.args_dict['roi'] = json.load(roi_file)
+    def __init__(self):
+        arguments = Arguments.instance()
+        self.nd2_wrapper = ND2Wrapper(arguments.input_file)
         self.roi_skip_empty = Settings.instance().get('roi_skip_empty') is True
         [self.progress_data, self.progress_order] = self.get_progress_bars_data()
 
     def get_progress_bars_data(self):
+        arguments = Arguments.instance()
         timepoints = self.nd2_wrapper.get_timepoints()
         multipoints = self.nd2_wrapper.get_multipoints_number()
-        if 'multipoints' in self.args_dict.keys():
-            multipoints = len(self.args_dict['multipoints'])
+        if 'multipoints' in arguments.multipoints:
+            multipoints = len(arguments.multipoints)
         channels = self.nd2_wrapper.get_channels_number()
-        if 'channels' in self.args_dict.keys():
-            channels = len(self.args_dict['channels'])
+        if 'channels' in arguments.channels:
+            channels = len(arguments.channels)
         frames = multipoints*channels*timepoints
         data = { 'Read': {'maximum': frames, 'units': 'frames'} }
         order = ['Read']
-        if 'output_dir' in self.args_dict.keys():
+        if arguments.is_tiff_write():
             data['Write'] = { 'maximum': frames, 'units': 'frames' }
             order.append('Write')
-        if 'matlab_output_dir' in self.args_dict.keys():
+        if arguments.is_pivlab():
             pairs_number = multipoints*channels*(timepoints-1)
             data['Pivlab calls'] = { 'maximum': pairs_number, 'units': 'frame pairs' }
             order.append('Pivlab calls')
-        if 'z_axis_profile_output_dir' in self.args_dict.keys():
+        if arguments.is_z_axis_profile():
             multipoint_channel_pairs = multipoints*channels
             data['Mean'] = { 'maximum': frames, 'units': 'frames'}
-            data['Mean Write'] = { 'maximum' : multipoint_channel_pairs, 'units' : 'series' }
-            order.append(['Mean', 'Mean Write'])
+            order.append('Mean')
+            if arguments.z_axis_profile_output_dir is not None:
+                data['Mean Write'] = { 'maximum' : multipoint_channel_pairs, 'units' : 'series' }
+                order.append('Mean Write')
         return [data, order]
 
     def should_handle_series(self, multipoint, channel):
-        settings = Settings.instance()
+        arguments = Arguments.instance()
         res = True
-        if 'roi' in self.args_dict.keys():
-            roi_dict = self.args_dict['roi']
+        if arguments.roi is not None:
             key = f"{multipoint}_{channel}"
-            if key not in roi_dict.keys() and self.roi_skip_empty() :
+            if key not in arguments.roi and self.roi_skip_empty() :
                 res = False
         return res
 
     def get_multipoint_channel_generator(self):
-        multipoints = self.nd2_wrapper.get_multipoints_number()
-        channels = self.nd2_wrapper.get_channels_number()
-        multipoints_vals = range(multipoints) if 'multipoints' not in self.args_dict.keys() else self.args_dict['multipoints']
-        channel_vals = range(channels) if 'channels' not in self.args_dict.keys() else self.args_dict['channels']
-        for multipoint in multipoints_vals:
-            for channel in channel_vals:
+        arguments = Arguments.instance()
+        for multipoint in arguments.multipoints:
+            for channel in arguments.channels:
                 if self.should_handle_series(multipoint, channel):
                     yield [multipoint, channel]
-
-
 
     @abstractmethod
     def run(self):

@@ -13,6 +13,7 @@ import numpy as np
 from matplotlib.widgets import RectangleSelector
 from functools import partial
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from nd2_tools.nd2_wrapper import ND2Wrapper
 
 
 def manual_blending(current_images, vmin, vmax):
@@ -43,14 +44,13 @@ def manual_blending(current_images, vmin, vmax):
 
 
 class MainWindow:
-    def __init__(self, title, nd2_manager):
+    def __init__(self, title):
         self.image_containers = {}
         self.roi_data = {}
         self.roi_selectors = {}
         self.canvas_widgets = {}  # Store canvas widgets for resizing
         self.figure_data = {}  # Store figure data for redrawing
-        self.nd2_manager = nd2_manager
-        self.images = nd2_manager.get()
+        self.images = None
         self.scrollable_frame = None
         self.h_scrollbar = None
         self.images_canvas = None
@@ -436,6 +436,7 @@ class MainWindow:
         if visible:
             self.add_images_frame()
             self.add_image_selection_controls()
+            self.images = ND2Wrapper.instance(self.input_file)
             self.add_first_images()
         else:
             if self.images_frame is not None:

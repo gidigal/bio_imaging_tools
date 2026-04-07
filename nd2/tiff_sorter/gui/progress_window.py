@@ -11,6 +11,7 @@ class ProgressWindow:
         self.queue = queue
         self.progress_bars = {}
         self.progress_bar_frame = None
+        self.aborted = False
 
     def init(self):
         self.progress_bar_frame = tk.Frame(self.root, bg="white", height=100)
@@ -53,8 +54,14 @@ class ProgressWindow:
                 break
         self.root.after(100, self.poll_queue)
 
+    def on_close(self):
+        print("on_close")
+        self.aborted = True
+        self.close()
+
     def start(self):
         self.root = tk.Tk()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.init()
         self.root.after(100, self.poll_queue)
         self.root.mainloop()

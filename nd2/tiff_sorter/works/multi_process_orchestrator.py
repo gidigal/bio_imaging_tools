@@ -6,31 +6,41 @@ from profiling.profiler import Profiler, get_summary_message
 from gui.progress_window import ProgressWindow
 from gui.z_axis_profile_window import ZAxisProfileWindow
 from works.run_workers_thread import RunWorkersThread
-
+from arguments.arguments import Arguments
+import threading
 
 class MultiProcessOrchestrator(Orchestrator):
-    def __init__(self, args_dict):
-        super().__init__(args_dict)
-        self.args_dict = args_dict
+    def __init__(self):
+        super().__init__()
         self.ui_queue = ThreadQueue()
-        self.nd2_wrapper = ND2Wrapper.instance(args_dict['input_file'])
+        self.nd2_wrapper = ND2Wrapper.instance(Arguments.instance().input_file)
         self.progress_window = None
         self.pivlab_stream_processor = None
 
     def run(self):
         Profiler.instance().start(time.time())
-        run_workers_thread = RunWorkersThread(self.get_multipoint_channel_generator(), self.ui_queue, self.args_dict)
+        abort_event = threading.Event()
+        run_workers_thread = RunWorkersThread(self.get_multipoint_channel_generator(),
+                                              self.ui_queue,
+                                              abort_event)
         run_workers_thread.start()
         self.progress_window = ProgressWindow(self.progress_data, self.progress_order, self.ui_queue)
-        self.progress_window.start()        
+        self.progress_window.start()
+        if self.progress_window.aborted:
+            print('aborted')
+            abort_event.set()
+            run_workers_thread.terminate()
+            run_workers_thread.join()
+            return
         run_workers_thread.join()
         Profiler.instance().end(time.time())
+        arguments = Arguments.instance()
         if Profiler.instance().get_print_summary() is True:
             print('Additional processes profiling data:')
             for result in run_workers_thread.profiler_results:
                 print(get_summary_message(result) + '\n')
-        if 'z_axis_profile_plot' in self.args_dict.keys():
-            z_axis_profile_window = ZAxisProfileWindow(run_workers_thread.mean_results, self.args_dict['input_file'])
+        if arguments.z_axis_profile_plot is True:
+            z_axis_profile_window = ZAxisProfileWindow(run_workers_thread.mean_results, arguments.input_file)
             z_axis_profile_window.start()
 
 

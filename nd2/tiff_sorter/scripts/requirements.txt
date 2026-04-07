@@ -10,3 +10,4 @@ tkinterdnd2
 setuptools>=80.10.2
 numpy>=1.24.0
 scipy
+click
