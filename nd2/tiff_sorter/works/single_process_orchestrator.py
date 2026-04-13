@@ -40,6 +40,7 @@ class SingleProcessOrchestrator(Orchestrator):
             self.pivlab_stream_processor = PIVlabStreamProcessor(self.report_strategy)
         if z_axis_profile_plot is True:
             self.mean_results = []
+        mean_results = {}
         for worker in self.worker_generator(self.nd2_wrapper.get_multipoints_number(),
                                             self.nd2_wrapper.get_channels_number()):
             worker.run()
@@ -47,6 +48,10 @@ class SingleProcessOrchestrator(Orchestrator):
                 self.mean_results.append({'multipoint': worker.get_multipoint(),
                                           'channel': worker.get_channel(),
                                           'mean_results': worker.get_mean_results()})
+            if arguments.z_axis_profile_single_output_file:
+                mean_results[f"{worker.get_multipoint()}_{worker.get_channel()}"] = worker.mean_results
+        if arguments.z_axis_profile_single_output_file:
+            self.save_z_axis_profile_to_single_file(mean_results)
         self.queue.put('Quit')
 
     def run(self):
