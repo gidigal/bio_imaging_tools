@@ -20,6 +20,7 @@ class Arguments:
         self.piv_params_file = None
         self.calibration_file = None
         self.z_axis_profile_output_dir = None
+        self.z_axis_profile_single_output_file = False
         self.z_axis_profile_plot = False
 
     def fill_in_multipoints_channels(self):
@@ -33,7 +34,7 @@ class Arguments:
             multipoints=None, channels=None,
             parallel = False, output_dir=None,
             matlab_output_dir=None, piv_params_file=None, calibration_file=None,
-            z_axis_profile_output_dir=None, z_axis_profile_plot=False):
+            z_axis_profile_output_dir=None, z_axis_profile_single_output_file=False, z_axis_profile_plot=False):
         self.input_file = input_file
         self.gui = gui
         self.output_dir = output_dir
@@ -50,6 +51,7 @@ class Arguments:
         self.piv_params_file = piv_params_file
         self.calibration_file = calibration_file
         self.z_axis_profile_output_dir = z_axis_profile_output_dir
+        self.z_axis_profile_single_output_file= z_axis_profile_single_output_file
         self.z_axis_profile_plot = z_axis_profile_plot
 
     @classmethod

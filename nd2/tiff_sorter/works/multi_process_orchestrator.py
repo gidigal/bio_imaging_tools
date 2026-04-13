@@ -17,6 +17,15 @@ class MultiProcessOrchestrator(Orchestrator):
         self.progress_window = None
         self.pivlab_stream_processor = None
 
+    def get_z_axis_profile_data(self, mean_results):
+        res = {}
+        for mean_result_entry in mean_results:
+            multipoint = mean_result_entry['multipoint']
+            channel = mean_result_entry['channel']
+            key = f"{multipoint}_{channel}"
+            res[key] = mean_result_entry['mean_results']
+        return res
+
     def run(self):
         Profiler.instance().start(time.time())
         abort_event = threading.Event()
@@ -33,8 +42,12 @@ class MultiProcessOrchestrator(Orchestrator):
             run_workers_thread.join()
             return
         run_workers_thread.join()
-        Profiler.instance().end(time.time())
         arguments = Arguments.instance()
+        if arguments.z_axis_profile_single_output_file:
+            z_axis_profile_data = self.get_z_axis_profile_data(run_workers_thread.mean_results)
+            self.save_z_axis_profile_to_single_file(z_axis_profile_data)
+        Profiler.instance().end(time.time())
+
         if Profiler.instance().get_print_summary() is True:
             print('Additional processes profiling data:')
             for result in run_workers_thread.profiler_results:

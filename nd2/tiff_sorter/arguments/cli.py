@@ -8,7 +8,7 @@ from works.multi_process_orchestrator import MultiProcessOrchestrator
 
 
 def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file, calibration_file,
-                  z_axis_profile_output_dir, z_axis_profile_plot,
+                  z_axis_profile_output_dir, z_axis_profile_single_output_file, z_axis_profile_plot,
                   output_dir):
     # Input file is required when gui is not selected
     if gui is False and input_file is None:
@@ -48,6 +48,12 @@ def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file,
             "--z_axis_profile_output_dir / --z_axis_profile_plot"
         )
 
+    # Constraint: user cannot state he wants a single output for z-axis-profile results and don't set output directory
+    if z_axis_profile_single_output_file and z_axis_profile_output_dir is None:
+        raise click.UsageError(
+            "When setting z_axis_profile_single_output_file user must set also z_axis_profile_output_dir"
+        )
+
     # Constraint 5: pivlab and z-axis-profile are mutually exclusive
     if is_pivlab and is_z_axis:
         raise click.UsageError(
@@ -78,11 +84,13 @@ def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file,
 @click.option('--calibration_file',
               help='[pivlab] See https://github.com/gidigal/bio_imaging_tools/blob/main/README.md#calibration_file')
 @click.option('--z_axis_profile_output_dir',
-              help='[z-axis-profile] Path to directory where csv files will be written')
+              help='[z-axis-profile] Path to directory where csv_utils files will be written')
+@click.option('--z_axis_profile_single_output_file', is_flag=True,
+              help='[z-axis-profile] A single csv_utils file will be created to all positions')
 @click.option('--z_axis_profile_plot', is_flag=True,
               help='[z-axis-profile] Plot the z-axis-profile values to graph')
 def cli(gui, input_file, multipoints, channels, parallel, roi_file, output_dir, matlab_output_dir, piv_params_file,
-        calibration_file, z_axis_profile_output_dir, z_axis_profile_plot):
+        calibration_file, z_axis_profile_output_dir, z_axis_profile_single_output_file, z_axis_profile_plot):
     """Process --input_file (.nd2) according to the selected use-case(s).
 
     \b
@@ -90,7 +98,8 @@ def cli(gui, input_file, multipoints, channels, parallel, roi_file, output_dir, 
       gui              : --gui
       tiff-write       : --output_dir
       pivlab           : --matlab_output_dir + --piv_params_file + --calibration_file
-      z-axis-profile   : --z_axis_profile_output_dir and/or --z_axis_profile_plot
+      z-axis-profile   : --z_axis_profile_output_dir (with or without z_axis_profile_single_output_file)
+                        and/or --z_axis_profile_plot
 
     \b
     Constraints:
@@ -100,7 +109,7 @@ def cli(gui, input_file, multipoints, channels, parallel, roi_file, output_dir, 
       - roi_file is optional for all use-cases
     """
     validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file, calibration_file,
-                  z_axis_profile_output_dir, z_axis_profile_plot, output_dir)
+                  z_axis_profile_output_dir, z_axis_profile_single_output_file, z_axis_profile_plot, output_dir)
 
     arguments = Arguments.instance()
 
@@ -112,6 +121,7 @@ def cli(gui, input_file, multipoints, channels, parallel, roi_file, output_dir, 
         matlab_output_dir=matlab_output_dir, piv_params_file=piv_params_file,
         calibration_file=calibration_file,
         z_axis_profile_output_dir=z_axis_profile_output_dir,
+        z_axis_profile_single_output_file=z_axis_profile_single_output_file,
         z_axis_profile_plot=z_axis_profile_plot
     )
 

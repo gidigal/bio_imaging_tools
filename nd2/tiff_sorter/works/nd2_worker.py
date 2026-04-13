@@ -6,18 +6,9 @@ from arguments.arguments import Arguments
 import json
 import collections
 import os
-import csv
+import csv_utils
 import io
 import traceback
-
-
-def generate_z_profile_csv(mean_values, experiment_interval_sec):
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(["[sec]", "Mean"])
-    for i, mean in enumerate(mean_values):
-        writer.writerow([i * experiment_interval_sec, mean])
-    return buffer.getvalue()
 
 
 class ND2Worker:
@@ -114,7 +105,8 @@ class ND2Worker:
 
     def run_z_axis_profile(self):
         self.mean_results = list(self.mean_generator)
-        if Arguments.instance().z_axis_profile_output_dir is not None:
+        arguments = Arguments.instance()
+        if arguments.z_axis_profile_output_dir is not None and arguments.z_axis_profile_single_output_file is False:
             self.save_mean(self.mean_results)
             self.report_strategy.mean_write_progress()
 

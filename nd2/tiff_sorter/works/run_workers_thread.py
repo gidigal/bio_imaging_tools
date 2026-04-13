@@ -17,14 +17,15 @@ def handle_tasks(args):
     Profiler.instance().set_print_summary(False)
     Profiler.instance().start(time.time())
     pivlab_stream_processor = None
-    should_z_axis_profile = arguments.z_axis_profile_plot
+    should_z_axis_profile = arguments.z_axis_profile_plot or arguments.z_axis_profile_single_output_file
+    z_axis_profile_single_output_file = arguments.z_axis_profile_single_output_file
     mean_results = []
     if arguments.is_pivlab():
         pivlab_stream_processor = PIVlabStreamProcessor(report_strategy)
     for [multipoint, channel] in tasks:
         nd2_worker = ND2Worker(multipoint, channel, report_strategy, pivlab_stream_processor)
         nd2_worker.run()
-        if should_z_axis_profile:
+        if should_z_axis_profile or z_axis_profile_single_output_file:
             mean_results.append({'multipoint': multipoint, 'channel': channel, 'mean_results': nd2_worker.get_mean_results()})
     queue.put({'type': 'Done'})
     Profiler.instance().end(time.time())
@@ -89,7 +90,7 @@ class RunWorkersThread(threading.Thread):
             mean_results = []
             for future in as_completed(futures):
                 profiler_results.append(future.result()['profiler'])
-                if arguments.z_axis_profile_plot:
+                if arguments.z_axis_profile_plot or arguments.z_axis_profile_single_output_file:
                     mean_results.extend(future.result()['z_axis_profile'])
         mean_results = sorted(mean_results, key=lambda d: (d['multipoint'], d['channel']))
         return [profiler_results, mean_results]

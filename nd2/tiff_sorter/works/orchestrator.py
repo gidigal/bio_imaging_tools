@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
-from nd2_tools.nd2_wrapper import ND2Wrapper
+from nd2_tools.nd2_wrapper import ND2Wrapper, get_experiment_interval_ms
 from config.settings import Settings
 from arguments.arguments import Arguments
+from csv_utils.z_axis_profile import generate_z_profile_csv
+import os
 
 
 class Orchestrator(ABC):
@@ -35,7 +37,7 @@ class Orchestrator(ABC):
             multipoint_channel_pairs = multipoints*channels
             data['Mean'] = { 'maximum': frames, 'units': 'frames'}
             order.append('Mean')
-            if arguments.z_axis_profile_output_dir is not None:
+            if arguments.z_axis_profile_output_dir is not None and arguments.z_axis_profile_single_output_file is False:
                 data['Mean Write'] = { 'maximum' : multipoint_channel_pairs, 'units' : 'series' }
                 order.append('Mean Write')
         return [data, order]
@@ -55,6 +57,18 @@ class Orchestrator(ABC):
             for channel in arguments.channels:
                 if self.should_handle_series(multipoint, channel):
                     yield [multipoint, channel]
+
+    def save_z_axis_profile_to_single_file(self, z_axis_profile_data):
+        mean_output_dir = Arguments.instance().z_axis_profile_output_dir
+        os.makedirs(mean_output_dir, exist_ok=True)
+        frames = self.nd2_wrapper.get_timepoints()
+        output_file = (mean_output_dir + "\\" +
+                       f"z_axis_profile_{frames}_frames.csv")
+        experiment_interval_sec = get_experiment_interval_ms(self.nd2_wrapper.get_input_file()) / 1000.0
+        csv_content = generate_z_profile_csv(z_axis_profile_data, experiment_interval_sec)
+        with open(output_file, "w", newline="") as f:
+            f.write(csv_content)
+
 
     @abstractmethod
     def run(self):
