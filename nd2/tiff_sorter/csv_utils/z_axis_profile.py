@@ -10,6 +10,7 @@ def generate_z_profile_csv(mean_values, experiment_interval_sec):
     writer = csv.writer(buffer)
     writer.writerow(["input file"])
     writer.writerow([arguments.input_file])
+    writer.writerow([])
     if arguments.z_axis_profile_single_output_file is False:
         writer.writerow(["[sec]", "Mean"])
         for i, mean in enumerate(mean_values):
