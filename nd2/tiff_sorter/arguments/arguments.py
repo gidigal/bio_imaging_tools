@@ -40,7 +40,7 @@ class Arguments:
         self.output_dir = output_dir
         self.multipoints = multipoints
         self.channels = channels
-        if self.multipoints is None or self.channels is None:
+        if self.input_file is not None and (self.multipoints is None or self.channels is None):
             self.fill_in_multipoints_channels()
         self.parallel = parallel
         self.roi_file = roi_file

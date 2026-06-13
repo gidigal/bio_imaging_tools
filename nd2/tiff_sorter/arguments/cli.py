@@ -41,9 +41,9 @@ def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file,
     # Constraint 4: z-axis-profile requires at least one output method
     is_pivlab = all(pivlab_args)
     is_z_axis = z_axis_profile_output_dir or z_axis_profile_plot
-    if not is_pivlab and not is_z_axis and not output_dir:
+    if not gui and not is_pivlab and not is_z_axis and not output_dir:
         raise click.UsageError(
-            "No use-case selected. Provide --output_dir (tiff-write), "
+            "No use-case selected. Provide --gui or --output_dir (tiff-write), "
             "all pivlab options, or at least one of "
             "--z_axis_profile_output_dir / --z_axis_profile_plot"
         )

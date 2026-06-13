@@ -84,8 +84,8 @@ class MainWindow:
         self.color_coded_boxes_frame = None
 
     def on_input_file_change(self, var, index, mode):
-        if self.input_file is not None and self.input_file.get() != 'None':
-            self.images = self.nd2_manager.get(input_file=self.input_file.get())
+        if self.input_file is not None and self.input_file.get() != 'None' and self.input_file.get() != '':
+            self.images = ND2Wrapper(self.input_file.get())
 
     def init_vars(self):
         self.input_file = tk.StringVar()
