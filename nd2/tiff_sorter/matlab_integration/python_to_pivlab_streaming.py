@@ -105,12 +105,16 @@ class PIVlabStreamProcessor:
             'u': np.array(matlab_result['u']),
             'v': np.array(matlab_result['v']),
             'typevector': np.array(matlab_result['typevector']),
+            'correlation_map': np.array(matlab_result['correlation_map']),
             'velocity_magnitude': np.array(matlab_result['velocity_magnitude']),
             'mean_velocity': float(matlab_result['mean_velocity']),
             'max_velocity': float(matlab_result['max_velocity']),
             'u_calibrated': np.array(matlab_result['u_calibrated']),
             'v_calibrated': np.array(matlab_result['v_calibrated']),
             'velocity_magnitude_calibrated': np.array(matlab_result['velocity_magnitude_calibrated']),
+            'u_filt': np.array(matlab_result['u_filt']),
+            'v_filt': np.array(matlab_result['v_filt']),
+            'typevector_filt': np.array(matlab_result['typevector_filt'])
         }
 
         t5 = time.time()

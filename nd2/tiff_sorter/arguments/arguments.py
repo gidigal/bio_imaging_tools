@@ -1,6 +1,4 @@
-import click
-from nd2_tools.nd2_wrapper import ND2Wrapper
-import os
+from wrapper_utils.wrapper_factory import get_wrapper
 import json
 
 
@@ -24,23 +22,31 @@ class Arguments:
         self.z_axis_profile_plot = False
 
     def fill_in_multipoints_channels(self):
-        nd2_wrapper = ND2Wrapper.instance(self.input_file)
-        if self.multipoints is None:
-            self.multipoints = list(range(nd2_wrapper.get_multipoints_number()))
-        if self.channels is None:
-            self.channels = list(range(nd2_wrapper.get_channels_number()))
+        if self.input_file or self.input_dir:
+            nd2_wrapper = get_wrapper(self.input_file, self.input_dir)
+            if self.multipoints is None:
+                self.multipoints = list(range(nd2_wrapper.get_multipoints_number()))
+            if self.channels is None:
+                self.channels = list(range(nd2_wrapper.get_channels_number()))
+        else:
+            self.multipoints = 1
+            self.channels = 1
 
-    def set(self, input_file, gui=False, roi_file=None,
+    def set(self, input_file, input_dir,  gui=False, roi_file=None,
             multipoints=None, channels=None,
             parallel = False, output_dir=None,
             matlab_output_dir=None, piv_params_file=None, calibration_file=None,
-            z_axis_profile_output_dir=None, z_axis_profile_single_output_file=False, z_axis_profile_plot=False):
+            z_axis_profile_output_dir=None,
+            z_axis_profile_single_output_file=False,
+            z_axis_profile_plot=False):
         self.input_file = input_file
+        self.input_dir = input_dir
         self.gui = gui
         self.output_dir = output_dir
         self.multipoints = multipoints
         self.channels = channels
-        if self.input_file is not None and (self.multipoints is None or self.channels is None):
+        if (self.input_file or self.input_dir) and (self.multipoints is None or self.channels is None):
+            print('Filling in multipoints and channels')
             self.fill_in_multipoints_channels()
         self.parallel = parallel
         self.roi_file = roi_file

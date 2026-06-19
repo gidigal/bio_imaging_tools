@@ -7,18 +7,26 @@ from works.single_process_orchestrator import SingleProcessOrchestrator
 from works.multi_process_orchestrator import MultiProcessOrchestrator
 
 
-def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file, calibration_file,
+def validate_args(gui, input_file, input_dir, roi_file, matlab_output_dir, piv_params_file, calibration_file,
                   z_axis_profile_output_dir, z_axis_profile_single_output_file, z_axis_profile_plot,
                   output_dir):
     # Input file is required when gui is not selected
-    if gui is False and input_file is None:
+    if gui is False and input_file is None and input_dir is None:
         raise click.UsageError(
-            "--input_file is required when --gui is not selected"
+            "--input_file or --input-dir are required when --gui is not selected"
         )
 
     # Make sure input file exists
     if input_file is not None and os.path.isfile(input_file) is False:
         raise FileNotFoundError(f"Missing input file {input_file}")
+
+    # Make sure that input file and input dir are not set together
+    if input_file is not None and input_dir is not None:
+        raise click.UsageError("--input_file and --input_dir are mutually exclusive")
+
+    # Make sure input directory exists
+    if input_dir is not None and os.path.isdir(input_dir) is False:
+        raise FileNotFoundError(f"Missing input dir {input_dir}")
 
     # Constraint 3: pivlab options must all be provided together or not at all
     pivlab_args = [matlab_output_dir, piv_params_file, calibration_file]
@@ -30,9 +38,9 @@ def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file,
 
     # Make sure input piv_parmas_file and calibration_file exist
     if all(pivlab_args):
-        if os.path.isfile(piv_params_file) is False:
+        if not os.path.isfile(piv_params_file):
             raise FileNotFoundError(f"Missing piv_params_file {piv_params_file}")
-        if os.path.isfile(calibration_file) is False:
+        if not os.path.isfile(calibration_file):
             raise FileNotFoundError(f"Missing calibration_file {calibration_file}")
 
     if roi_file is not None and os.path.isfile(roi_file) is False:
@@ -66,6 +74,7 @@ def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file,
 @click.command()
 @click.option('--gui', is_flag=True, help='[all] Set arguments using graphical user interface')
 @click.option('--input_file', help='[tiff-write pivlab z-axis-profile] Input *.nd2 file full path name')
+@click.option('--input_dir', help='[pivlab] Input directory with *.tiff files')
 @click.option('--output_dir',
               help='[tiff-write] Path to directory where tiff files will be written')
 @click.option('--multipoints', type=IntListOrInt(), default=None,
@@ -89,7 +98,7 @@ def validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file,
               help='[z-axis-profile] A single csv_utils file will be created to all positions')
 @click.option('--z_axis_profile_plot', is_flag=True,
               help='[z-axis-profile] Plot the z-axis-profile values to graph')
-def cli(gui, input_file, multipoints, channels, parallel, roi_file, output_dir, matlab_output_dir, piv_params_file,
+def cli(gui, input_file, input_dir, multipoints, channels, parallel, roi_file, output_dir, matlab_output_dir, piv_params_file,
         calibration_file, z_axis_profile_output_dir, z_axis_profile_single_output_file, z_axis_profile_plot):
     """Process --input_file (.nd2) according to the selected use-case(s).
 
@@ -108,13 +117,14 @@ def cli(gui, input_file, multipoints, channels, parallel, roi_file, output_dir, 
       - tiff-write can be combined with either of the above
       - roi_file is optional for all use-cases
     """
-    validate_args(gui, input_file, roi_file, matlab_output_dir, piv_params_file, calibration_file,
+
+    validate_args(gui, input_file, input_dir, roi_file, matlab_output_dir, piv_params_file, calibration_file,
                   z_axis_profile_output_dir, z_axis_profile_single_output_file, z_axis_profile_plot, output_dir)
 
     arguments = Arguments.instance()
 
     arguments.set(
-        gui=gui, input_file=input_file,
+        gui=gui, input_file=input_file, input_dir=input_dir,
         multipoints=multipoints, channels=channels,
         parallel=parallel, roi_file=roi_file,
         output_dir=output_dir,
@@ -136,5 +146,9 @@ def cli(gui, input_file, multipoints, channels, parallel, roi_file, output_dir, 
     else:
         orchestrator = SingleProcessOrchestrator()
     orchestrator.run()
+
+    if __name__ == "__main__":
+        cli()
+
 
 

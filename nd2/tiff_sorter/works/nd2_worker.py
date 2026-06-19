@@ -1,14 +1,14 @@
-from nd2_tools.nd2_wrapper import ND2Wrapper
-from nd2_tools.nd2_wrapper import get_experiment_interval_ms
+import collections
+import json
+import os
+import traceback
+
+from arguments.arguments import Arguments
+from csv_utils.z_axis_profile import generate_z_profile_csv
 from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
 from matlab_integration.save_to_mat import save_results_to_mat
-from arguments.arguments import Arguments
-import json
-import collections
-import os
-import csv_utils
-import io
-import traceback
+from wrapper_utils.wrapper_factory import get_wrapper
+from nd2_tools.nd2_wrapper import get_experiment_interval_ms
 
 
 class ND2Worker:
@@ -19,7 +19,9 @@ class ND2Worker:
         self.rw_generator = None
         self.matlab_generator = None
         self.mean_generator = None
-        self.nd2_wrapper = ND2Wrapper.instance(Arguments.instance().input_file)
+        arguments = Arguments.instance()
+        self.nd2_wrapper = get_wrapper(arguments.input_file, arguments.input_dir)
+        self.piv_params = None
         self.pivlab_stream_processor = pivlab_stream_processor
         self.mean_results = None
 
@@ -59,6 +61,8 @@ class ND2Worker:
             with open(arguments.piv_params_file, 'r') as piv_params_file:
                 piv_params = json.load(piv_params_file)
             piv_params['cal_fact'] = calibration['pixel_size_um'] / calibration['mag'] / calibration['time_step']
+            piv_params['time_step'] = calibration['time_step']
+            self.piv_params = piv_params
             self.matlab_generator = self.pivlab_stream_processor.process_image_generator(self.rw_generator,
                                                                                          piv_params,
                                                                                          self.report_strategy)
@@ -73,7 +77,7 @@ class ND2Worker:
         channel_name = self.nd2_wrapper.get_channel_names()[self.channel]
         matlab_output_file = (matlab_output_dir + "\\" +
                               f"multipoint_{self.multipoint}_channel_{channel_name}_{frames}_frames.mat")
-        save_results_to_mat(matlab_results, matlab_output_file)
+        save_results_to_mat(matlab_results, matlab_output_file, piv_params=self.piv_params)
 
     def save_mean(self, mean_results):
         mean_output_dir = Arguments.instance().z_axis_profile_output_dir

@@ -57,21 +57,48 @@ function result = process_single_pair_pivlab(image1, image2, piv_params)
         piv_params.delta_diff_min);
 
     % Package results
+    % Post-processing (validation + outlier replacement)
+    % r parameters mirror PIVlab's default post-processing settings
+    calu     = piv_params.cal_fact;
+    calv     = piv_params.cal_fact;
+    valid_vel = [-50; 50; -50; 50];
+    do_stdev_check  = 1;
+    stdthresh       = 5;
+    do_local_median = 1;
+    neigh_thresh    = 3;
+
+    [u_filt, v_filt] = PIVlab_postproc(u, v, ...
+        calu, calv, valid_vel, ...
+        do_stdev_check, stdthresh, ...
+        do_local_median, neigh_thresh);
+
+    typevector_filt = typevector;
+    typevector_filt(isnan(u_filt)) = 2;
+    typevector_filt(isnan(v_filt)) = 2;
+    typevector_filt(typevector == 0) = 0;
+
+    % Interpolate missing data (inpaint_nans)
+    u_filt = inpaint_nans(u_filt, 4);
+    v_filt = inpaint_nans(v_filt, 4);
+
+    % Package results
     result = struct();
     result.x = x;
     result.y = y;
     result.u = u;
     result.v = v;
-    result.typevector = typevector;
-    result.correlation_map = corr_map;
+    result.typevector       = typevector;
+    result.u_filt           = u_filt;
+    result.v_filt           = v_filt;
+    result.typevector_filt  = typevector_filt;
+    result.correlation_map  = corr_map;
 
     vel_mag = sqrt(u.^2 + v.^2);
     result.velocity_magnitude = vel_mag;
-    result.mean_velocity = mean(vel_mag(:), 'omitnan');
-    result.max_velocity = max(vel_mag(:));
+    result.mean_velocity      = mean(vel_mag(:), 'omitnan');
+    result.max_velocity       = max(vel_mag(:));
 
-    % Apply calibration
-    result.u_calibrated = u * piv_params.cal_fact;
-    result.v_calibrated = v * piv_params.cal_fact;
+    result.u_calibrated = u_filt * piv_params.cal_fact;
+    result.v_calibrated = v_filt * piv_params.cal_fact;
     result.velocity_magnitude_calibrated = sqrt(result.u_calibrated.^2 + result.v_calibrated.^2);
 end

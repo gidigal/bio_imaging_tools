@@ -1,25 +1,24 @@
-from works.orchestrator import Orchestrator
-from works.single_process_report_strategy import SingleProcessReportStrategy
-from nd2_tools.nd2_wrapper import ND2Wrapper
-from works.nd2_worker import ND2Worker
-from profiling.profiler import Profiler
-from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
-from gui.progress_window import ProgressWindow
-from gui.z_axis_profile_window import ZAxisProfileWindow
 import queue
 import threading
 import time
-import os
+
 from arguments.arguments import Arguments
+from gui.progress_window import ProgressWindow
+from gui.z_axis_profile_window import ZAxisProfileWindow
 from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor
-from arguments.arguments import Arguments
+from wrapper_utils.wrapper_factory import get_wrapper
+from nd2_tools.nd2_wrapper import ND2Wrapper
+from profiling.profiler import Profiler
+from works.nd2_worker import ND2Worker
+from works.orchestrator import Orchestrator
+from works.single_process_report_strategy import SingleProcessReportStrategy
 
 
 class SingleProcessOrchestrator(Orchestrator):
     def __init__(self):
         super().__init__()
         arguments = Arguments.instance()
-        self.nd2_wrapper = ND2Wrapper.instance(arguments.input_file)
+        self.nd2_wrapper = get_wrapper(arguments.input_file, arguments.input_dir)
         self.image_series = self.nd2_wrapper.get_multipoints_number()*self.nd2_wrapper.get_channels_number()
         self.report_strategy = None
         self.pivlab_stream_processor = None

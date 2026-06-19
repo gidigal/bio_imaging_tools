@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from nd2_tools.nd2_wrapper import ND2Wrapper, get_experiment_interval_ms
+from wrapper_utils.wrapper_factory import get_wrapper
 from config.settings import Settings
 from arguments.arguments import Arguments
 from csv_utils.z_axis_profile import generate_z_profile_csv
@@ -10,7 +10,7 @@ class Orchestrator(ABC):
 
     def __init__(self):
         arguments = Arguments.instance()
-        self.nd2_wrapper = ND2Wrapper(arguments.input_file)
+        self.nd2_wrapper = get_wrapper(arguments.input_file, arguments.input_dir)
         self.roi_skip_empty = Settings.instance().get('roi_skip_empty') is True
         [self.progress_data, self.progress_order] = self.get_progress_bars_data()
 
@@ -18,10 +18,10 @@ class Orchestrator(ABC):
         arguments = Arguments.instance()
         timepoints = self.nd2_wrapper.get_timepoints()
         multipoints = self.nd2_wrapper.get_multipoints_number()
-        if 'multipoints' in arguments.multipoints:
+        if arguments.multipoints:
             multipoints = len(arguments.multipoints)
         channels = self.nd2_wrapper.get_channels_number()
-        if 'channels' in arguments.channels:
+        if arguments.channels:
             channels = len(arguments.channels)
         frames = multipoints*channels*timepoints
         data = { 'Read': {'maximum': frames, 'units': 'frames'} }

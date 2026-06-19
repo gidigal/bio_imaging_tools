@@ -1,6 +1,5 @@
 from works.orchestrator import Orchestrator
 from queue import Queue as ThreadQueue
-from nd2_tools.nd2_wrapper import ND2Wrapper
 import time
 from profiling.profiler import Profiler, get_summary_message
 from gui.progress_window import ProgressWindow
@@ -13,7 +12,6 @@ class MultiProcessOrchestrator(Orchestrator):
     def __init__(self):
         super().__init__()
         self.ui_queue = ThreadQueue()
-        self.nd2_wrapper = ND2Wrapper.instance(Arguments.instance().input_file)
         self.progress_window = None
         self.pivlab_stream_processor = None
 

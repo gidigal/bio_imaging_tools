@@ -5,187 +5,183 @@ Save PIV results to MATLAB .mat files
 
 import scipy.io
 import numpy as np
-from matlab_integration.python_to_pivlab_streaming import PIVlabStreamProcessor, nd2_frame_generator
-from pathlib import Path
 
-def save_results_to_mat(results, output_file):
+
+def _make_col_cell(num_pairs):
     """
-    Save PIV results to a .mat file that MATLAB can open
-    
+    Create a (num_pairs, 1) object array — matches PIVlab's column-vector cell layout.
+    """
+    arr = np.empty((num_pairs, 1), dtype=object)
+    return arr
+
+
+def _build_pivlab_param_struct(piv_params):
+    """
+    Build the three PIVlab parameter structs (p, s, r) that PIVlab saves alongside results.
+    These allow anyone reopening the .mat file to know exactly what settings were used.
+
+    p  — preprocessing parameters
+    s  — PIV / interrogation parameters
+    r  — post-processing / validation parameters
+    """
+    cal = piv_params.get('cal_fact', 1.0)
+
+    p = np.empty((10, 2), dtype=object)
+    p[0] = ['ROI', np.array([])]
+    p[1] = ['CLAHE', np.array([[int(piv_params.get('clahe', 1))]])]
+    p[2] = ['CLAHE size', np.array([[int(piv_params.get('clahesize', 64))]])]
+    p[3] = ['Highpass', np.array([[int(piv_params.get('highp', 0))]])]
+    p[4] = ['Highpass size', np.array([[int(piv_params.get('highpsize', 15))]])]
+    p[5] = ['Clipping', np.array([[int(piv_params.get('intenscap', 0))]])]
+    p[6] = ['Wiener', np.array([[int(piv_params.get('wienerwurst', 0))]])]
+    p[7] = ['Wiener size', np.array([[int(piv_params.get('wienerwurstsize', 3))]])]
+    p[8] = ['Minimum intensity', np.array([[float(piv_params.get('minintens', 0))]])]
+    p[9] = ['Maximum intensity', np.array([[float(piv_params.get('maxintens', 1))]])]
+
+    passes = int(piv_params.get('passes', 3))
+    s = np.empty((15, 2), dtype=object)
+    s[0] = ['Int. area 1', np.array([[int(piv_params.get('interrogationarea', 256))]])]
+    s[1] = ['Step size 1', np.array([[int(piv_params.get('step', 64))]])]
+    s[2] = ['Subpix. finder', np.array([[int(piv_params.get('subpixfinder', 1))]])]
+    s[3] = ['Mask', np.array([])]
+    s[4] = ['ROI', np.array([])]
+    s[5] = ['Nr. of passes', np.array([[passes]])]
+    s[6] = ['Int. area 2', np.array([[int(piv_params.get('int2', 128))]])]
+    s[7] = ['Int. area 3', np.array([[int(piv_params.get('int3', 64))]])]
+    s[8] = ['Int. area 4', np.array([[int(piv_params.get('int4', 32))]])]
+    s[9] = ['Window deformation', np.array([piv_params.get('imdeform', '*linear')])]
+    s[10] = ['Repeated Correlation', np.array([[int(piv_params.get('repeat', 0))]])]
+    s[11] = ['Disable Autocorrelation', np.array([[0]])]
+    s[12] = ['Correlation style', np.array([[int(piv_params.get('do_linear_correlation', 0))]])]
+    s[13] = ['Repeat last pass', np.array([[int(piv_params.get('repeat_last_pass', 0))]])]
+    s[14] = ['Last pass quality slope', np.array([[float(piv_params.get('delta_diff_min', 0.025))]])]
+
+    r = np.empty((7, 2), dtype=object)
+    r[0] = ['Calibration factor, 1 for uncalibrated data', np.array([[float(cal)]])]
+    r[1] = ['Calibration factor, 1 for uncalibrated data', np.array([[float(cal)]])]
+    r[2] = ['Valid velocities [u_min; u_max; v_min; v_max]',
+            np.array([[-50], [50], [-50], [50]], dtype=float)]
+    r[3] = ['Stdev check?', np.array([[1]])]
+    r[4] = ['Stdev threshold', np.array([[5.0]])]
+    r[5] = ['Local median check?', np.array([[1]])]
+    r[6] = ['Local median threshold', np.array([[3.0]])]
+
+    return p, s, r
+
+
+def save_results_to_mat(results, output_file, piv_params=None, image_filenames=None):
+    """
+    Save PIV results to a .mat file compatible with PIVlab's own output format.
+
     Parameters:
     -----------
     results : list of dict
-        List of PIV results from process_image_generator
+        List of PIV results from process_image_generator.
+        Each dict must contain: x, y, u, v, typevector, correlation_map,
+        mean_velocity, max_velocity, pair_index.
+        Optionally: u_filt, v_filt, typevector_filt (if post-processing was applied).
     output_file : str
-        Output .mat file path
+        Output .mat file path.
+    piv_params : dict or None
+        PIV parameter dict used during processing. Used to populate the
+        PIVlab-style p/s/r parameter structs in the output file.
+    image_filenames : list of str or None
+        Ordered list of all image filenames (tif/png/etc.) that were processed.
+        Used to populate slicedfilename1 / slicedfilename2 per pair.
+        If None, filenames are left empty.
     """
-    
-    # Organize results for MATLAB
+
+    if piv_params is None:
+        piv_params = {}
+
     num_pairs = len(results)
-    
-    # Pre-allocate arrays (MATLAB-friendly structure)
-    mat_data = {
-        'num_pairs': num_pairs,
-        'mean_velocity': np.array([r['mean_velocity'] for r in results]),
-        'max_velocity': np.array([r['max_velocity'] for r in results]),
-        'pair_indices': np.array([r['pair_index'] for r in results]),
-    }
-    
-    # Store velocity fields as cell arrays (MATLAB cell arrays)
-    # Each cell contains a 2D array
-    x_cells = np.empty((num_pairs,), dtype=object)
-    y_cells = np.empty((num_pairs,), dtype=object)
-    u_cells = np.empty((num_pairs,), dtype=object)
-    v_cells = np.empty((num_pairs,), dtype=object)
-    vel_mag_cells = np.empty((num_pairs,), dtype=object)
-    typevector_cells = np.empty((num_pairs,), dtype=object)
-    
+
+    # ------------------------------------------------------------------- #
+    # Per-frame cell arrays — all stored as (num_pairs, 1) column vectors #
+    # to match PIVlab's layout                                            #
+    # ------------------------------------------------------------------- #
+    x_cells = _make_col_cell(num_pairs)
+    y_cells = _make_col_cell(num_pairs)
+    u_cells = _make_col_cell(num_pairs)
+    v_cells = _make_col_cell(num_pairs)
+    typevector_cells = _make_col_cell(num_pairs)
+    u_filt_cells = _make_col_cell(num_pairs)
+    v_filt_cells = _make_col_cell(num_pairs)
+    tv_filt_cells = _make_col_cell(num_pairs)
+    corr_map_cells = _make_col_cell(num_pairs)
+    vel_mag_cells = _make_col_cell(num_pairs)  # your extra, kept for convenience
+    fname1_cells = _make_col_cell(num_pairs)
+    fname2_cells = _make_col_cell(num_pairs)
+
     for i, result in enumerate(results):
-        x_cells[i] = result['x']
-        y_cells[i] = result['y']
-        u_cells[i] = result['u']
-        v_cells[i] = result['v']
-        vel_mag_cells[i] = result['velocity_magnitude']
-        typevector_cells[i] = result['typevector']
-    
-    mat_data['x'] = x_cells
-    mat_data['y'] = y_cells
-    mat_data['u'] = u_cells
-    mat_data['v'] = v_cells
-    mat_data['velocity_magnitude'] = vel_mag_cells
-    mat_data['typevector'] = typevector_cells
-    
-    # Save to .mat file
+        x_cells[i, 0] = result['x']
+        y_cells[i, 0] = result['y']
+        u_cells[i, 0] = result['u']
+        v_cells[i, 0] = result['v']
+        typevector_cells[i, 0] = result['typevector']
+        corr_map_cells[i, 0] = result['correlation_map']
+        vel_mag_cells[i, 0] = result['velocity_magnitude']
+
+        # Filtered fields: use dedicated filtered arrays if the pipeline
+        # produced them; otherwise fall back to the raw arrays (meaning
+        # no filtering/outlier replacement was applied).
+        u_filt_cells[i, 0] = result.get('u_filt', result['u'])
+        v_filt_cells[i, 0] = result.get('v_filt', result['v'])
+        tv_filt_cells[i, 0] = result.get('typevector_filt', result['typevector'])
+
+        # Paired image filenames
+        if image_filenames is not None:
+            idx = result['pair_index']
+            fname1_cells[i, 0] = [image_filenames[idx]]
+            fname2_cells[i, 0] = [image_filenames[idx + 1]]
+        else:
+            fname1_cells[i, 0] = ['']
+            fname2_cells[i, 0] = ['']
+
+    # ------------------------------------------------------------------ #
+    # Scalar metadata                                                      #
+    # ------------------------------------------------------------------ #
+    cal_fact = float(piv_params.get('cal_fact', 1.0))
+    time_step = int(piv_params.get('time_step', 1))
+
+    # ------------------------------------------------------------------ #
+    # PIVlab parameter structs                                             #
+    # ------------------------------------------------------------------ #
+    p, s, r = _build_pivlab_param_struct(piv_params)
+
+    # ------------------------------------------------------------------ #
+    # Assemble mat_data dict                                               #
+    # ------------------------------------------------------------------ #
+    mat_data = {
+        # --- PIVlab-compatible fields ---
+        'x': x_cells,
+        'y': y_cells,
+        'u': u_cells,
+        'v': v_cells,
+        'typevector': typevector_cells,
+        'u_filt': u_filt_cells,
+        'v_filt': v_filt_cells,
+        'typevector_filt': tv_filt_cells,
+        'correlation_map': corr_map_cells,
+        'slicedfilename1': fname1_cells,
+        'slicedfilename2': fname2_cells,
+        'cal_fact': np.array([[cal_fact]]),
+        'time_step': np.array([[time_step]], dtype=np.uint8),
+        'interpolate_missing_data': np.array([[0]], dtype=np.uint8),
+        'pairwise': np.array([[0]], dtype=np.uint8),
+        'p': p,
+        's': s,
+        'r': r,
+
+        # --- your extras (not in PIVlab output, but useful) ---
+        'num_pairs': num_pairs,
+        'mean_velocity': np.array([r_['mean_velocity'] for r_ in results]),
+        'max_velocity': np.array([r_['max_velocity'] for r_ in results]),
+        'pair_indices': np.array([r_['pair_index'] for r_ in results]),
+        'velocity_magnitude': vel_mag_cells,
+    }
+
     scipy.io.savemat(output_file, mat_data)
     print(f"Results saved to {output_file}")
     print(f"  {num_pairs} velocity fields")
     print(f"  Mean velocity: {np.mean(mat_data['mean_velocity']):.2f} px/frame")
-
-
-def save_results_incrementally(nd2_path, output_file, piv_params=None, roi=None):
-    """
-    Process nd2 and save results incrementally to .mat file
-    
-    Parameters:
-    -----------
-    nd2_path : str
-        Path to nd2 file
-    output_file : str
-        Output .mat file path
-    piv_params : dict
-        PIV parameters
-    roi : tuple
-        (y1, y2, x1, x2) or None
-    """
-    
-    if piv_params is None:
-        piv_params = {
-            'passes': [64.0, 32.0, 16.0],
-            'overlap': 0.5,
-            'subpixel_method': 'Gauss2x3',
-            'validation': True,
-            'smoothing': True
-        }
-    
-    results = []
-    
-    with PIVlabStreamProcessor() as processor:
-        frame_gen = nd2_frame_generator(nd2_path, channel=0, position=0, roi=roi)
-        
-        for piv_result in processor.process_image_generator(frame_gen, piv_params):
-            results.append(piv_result)
-            print(f"  Pair {piv_result['pair_index']}: "
-                  f"mean_vel={piv_result['mean_velocity']:.2f}")
-    
-    # Save all results to .mat file
-    save_results_to_mat(results, output_file)
-    
-    return results
-
-
-def process_multipoint_to_mat(nd2_path, output_dir, piv_params=None):
-    """
-    Process all positions in nd2 file and save each to separate .mat file
-    
-    Parameters:
-    -----------
-    nd2_path : str
-        Path to nd2 file
-    output_dir : str
-        Directory to save .mat files
-    piv_params : dict
-        PIV parameters
-    """
-    
-    from nd2reader import ND2Reader
-    
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-    
-    # Get number of positions
-    with ND2Reader(nd2_path) as images:
-        num_positions = images.sizes.get('v', 1)
-        num_channels = images.sizes.get('c', 1)
-    
-    print(f"Processing {num_positions} positions, {num_channels} channels")
-    
-    if piv_params is None:
-        piv_params = {
-            'passes': [64.0, 32.0, 16.0],
-            'overlap': 0.5,
-            'subpixel_method': 'Gauss2x3',
-            'validation': True,
-            'smoothing': True
-        }
-    
-    with PIVlabStreamProcessor() as processor:
-        
-        for pos in range(num_positions):
-            for ch in range(num_channels):
-                
-                print(f"\n--- Position {pos}, Channel {ch} ---")
-                
-                # Process this position/channel
-                frame_gen = nd2_frame_generator(nd2_path, channel=ch, position=pos)
-                
-                results = []
-                for result in processor.process_image_generator(frame_gen, piv_params):
-                    results.append(result)
-                    print(f"  Pair {result['pair_index']}: mean_vel={result['mean_velocity']:.2f}")
-                
-                # Save to .mat file
-                output_file = output_path / f"piv_pos{pos:02d}_ch{ch:02d}.mat"
-                save_results_to_mat(results, str(output_file))
-    
-    print(f"\nAll results saved to {output_dir}")
-
-
-# Example usage functions
-
-if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) < 2:
-        print("Usage:")
-        print("  python save_to_mat.py <nd2_file> [output.mat]")
-        print("\nExample:")
-        print("  python save_to_mat.py data.nd2 results.mat")
-        sys.exit(1)
-    
-    nd2_file = sys.argv[1]
-    
-    if len(sys.argv) > 2:
-        output_mat = sys.argv[2]
-    else:
-        # Auto-generate output filename
-        output_mat = Path(nd2_file).stem + "_piv_results.mat"
-    
-    print(f"Input: {nd2_file}")
-    print(f"Output: {output_mat}\n")
-    
-    # Process and save
-    roi = (100, 400, 100, 400)  # Adjust as needed, or set to None
-    save_results_incrementally(nd2_file, output_mat, roi=roi)
-    
-    print("\n✓ Done! You can now open the .mat file in MATLAB:")
-    print(f"  >> load('{output_mat}')")
