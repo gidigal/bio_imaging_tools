@@ -118,7 +118,7 @@ def save_results_to_mat(results, output_file, piv_params=None, image_filenames=N
         y_cells[i, 0] = result['y']
         u_cells[i, 0] = result['u']
         v_cells[i, 0] = result['v']
-        typevector_cells[i, 0] = result['typevector']
+        typevector_cells[i, 0] = result['typevector'].astype(np.uint8)
         corr_map_cells[i, 0] = result['correlation_map']
         vel_mag_cells[i, 0] = result['velocity_magnitude']
 
@@ -127,7 +127,7 @@ def save_results_to_mat(results, output_file, piv_params=None, image_filenames=N
         # no filtering/outlier replacement was applied).
         u_filt_cells[i, 0] = result.get('u_filt', result['u'])
         v_filt_cells[i, 0] = result.get('v_filt', result['v'])
-        tv_filt_cells[i, 0] = result.get('typevector_filt', result['typevector'])
+        tv_filt_cells[i, 0] = result.get('typevector_filt', result['typevector']).astype(np.uint8)
 
         # Paired image filenames
         if image_filenames is not None:
@@ -178,7 +178,6 @@ def save_results_to_mat(results, output_file, piv_params=None, image_filenames=N
         'mean_velocity': np.array([r_['mean_velocity'] for r_ in results]),
         'max_velocity': np.array([r_['max_velocity'] for r_ in results]),
         'pair_indices': np.array([r_['pair_index'] for r_ in results]),
-        'velocity_magnitude': vel_mag_cells,
     }
 
     scipy.io.savemat(output_file, mat_data)

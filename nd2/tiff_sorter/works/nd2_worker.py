@@ -11,6 +11,34 @@ from wrapper_utils.wrapper_factory import get_wrapper
 from nd2_tools.nd2_wrapper import get_experiment_interval_ms
 
 
+def get_cal_fact(arguments):
+    with open(arguments.calibration_file, 'r') as calibration_file:
+        calibration = json.load(calibration_file)
+        cal_formula = calibration.get('cal_formula', 'pixel_size')
+        if cal_formula == 'pixel_size':
+            # Direct: user knows the pixel size in µm
+            # cal_fact units: µm/pixel / (dimensionless * seconds) = µm/(pixel·s)
+            pixel_size_um = calibration['pixel_size_um']
+            time_step = calibration['time_step']
+            mag = calibration.get('mag', 1)
+            cal_fact = pixel_size_um / mag / time_step
+
+        elif cal_formula == 'fov':
+            # From field-of-view: user knows image physical size and pixel dimensions
+            # pixel_size = fov_um / image_width_pixels
+            # cal_fact units: same as above
+            fov_um = calibration['fov_um']
+            image_width_pixels = calibration['image_width_pixels']
+            time_step = calibration['time_step']
+            mag = calibration.get('mag', 1)
+            cal_fact = fov_um / image_width_pixels / mag / time_step
+
+        else:
+            raise ValueError(f"Unknown cal_formula '{cal_formula}'. "
+                             f"Supported values: 'pixel_size', 'fov'")
+
+    return cal_fact,calibration
+
 class ND2Worker:
     def __init__(self, multipoint, channel, report_strategy, pivlab_stream_processor=None):
         self.multipoint = multipoint
@@ -50,17 +78,14 @@ class ND2Worker:
             self.rw_generator = self.nd2_wrapper.nd2_images_writer_generator(self.rw_generator,
                                                                              channel_dir_full,
                                                                              self.report_strategy)
-        arguments = Arguments.instance()
         if arguments.is_pivlab():
             if self.pivlab_stream_processor is None:
                 self.pivlab_stream_processor = PIVlabStreamProcessor(self.report_strategy)
             calibration = None
-            with open(arguments.calibration_file, 'r') as calibration_file:
-                calibration = json.load(calibration_file)
             piv_params = None
             with open(arguments.piv_params_file, 'r') as piv_params_file:
                 piv_params = json.load(piv_params_file)
-            piv_params['cal_fact'] = calibration['pixel_size_um'] / calibration['mag'] / calibration['time_step']
+            piv_params['cal_fact'], calibration  = get_cal_fact(arguments)
             piv_params['time_step'] = calibration['time_step']
             self.piv_params = piv_params
             self.matlab_generator = self.pivlab_stream_processor.process_image_generator(self.rw_generator,
