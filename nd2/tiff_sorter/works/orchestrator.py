@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from wrapper_utils.wrapper_factory import get_wrapper
+from nd2_tools.nd2_wrapper import get_experiment_interval_ms
 from config.settings import Settings
 from arguments.arguments import Arguments
 from csv_utils.z_axis_profile import generate_z_profile_csv
