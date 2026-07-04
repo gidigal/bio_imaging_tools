@@ -31,9 +31,9 @@ The script currently supports command line arguments only.
 
 
 ## Calibration file
-The `--calibration_file` argument expects a JSON file with the following fields:
-"cal_formula" field defines which calibration formula is used:
-For "pixel_size" value, the formula is pixel_size_um / mag / time_step
+The `--calibration_file` argument expects a JSON file with the following fields:  
+"cal_formula" field defines which calibration formula is used:  
+For "pixel_size" value, the formula is pixel_size_um / mag / time_step  
 For "fov" (field of view) value, the formula is fov_um / image_width_pixels / mag / time_step
 
 | Field                | Type  | Required  | Description                               |  
@@ -91,22 +91,22 @@ Required applications: Git and Python
 3. Clone the repository:  
 git clone https://github.com/gidigal/bio_imaging_tools.git
 4. Install Python. Your Python version is dependent on [Matlab version and its supported python versions for matlab engine](https://www.mathworks.com/support/requirements/python-compatibility.html)
-5. Create Python virtual environment
+5. Create Python virtual environment  
 python -m venv venv
-6. Activate the virtual environment
+6. Activate the virtual environment  
 venv\Scripts\activate.bat
-7. Install bio_imaging_tools packages, defined in nd2/tiff_sorter/scripts/requirements.txt
+7. Install bio_imaging_tools packages, defined in nd2/tiff_sorter/scripts/requirements.txt  
 pip install -r <path to bio_imaging_tools\nd2\tiff_sorter\scripts\requirements.txt file>
 8. Open matlab and run "matlabroot" from its terminal to find Matlab's installation location.
-9. Change directory to <Matlab root>\extern\engines\python
+9. Change directory to <Matlab root>\extern\engines\python  
 cd <Matlab root>\extern\engines\python
-9. Install Matlab engine (MATLAB R2022b and Newer)
-python -m pip install .
-(MATLAB R2022a and Older))
+10. Install Matlab engine (MATLAB R2022b and Newer)  
+python -m pip install .  
+(MATLAB R2022a and Older))  
 python setup.py install
-10. Find Pivlab's installation directory by entering "which PIVlab_GUI.m" in Matlab's terminal.
-11. Open bio_imaging_tools\nd2\tiff_sorter\settings.json in text editor.
-12. Change "pivlab_root" to point to Pivlab's path. 
+11. Find Pivlab's installation directory by entering "which PIVlab_GUI.m" in Matlab's terminal.
+12. Open bio_imaging_tools\nd2\tiff_sorter\settings.json in text editor.
+13. Change "pivlab_root" to point to Pivlab's path. 
 
 
 
