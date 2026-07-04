@@ -25,10 +25,23 @@ The script currently supports command line arguments only.
 | --z_axis_profile_single_output_file | None   | z-axis-profile | Optional   | Whether to create single csv file for all multipoints                                                   |  
 | --z_axis_profile_plot               | None   | z-axis-profile | Optional   | Plot the z-axis-profile values to graph                                                                 |  
 
-
-
-
-
+### Examples for running split_channels script:  
+```
+python split_channels.py --input_file="D:\temp\a.nd2" --output_dir="D:\temp\output" --multipoints=[0,1] --parallel  
+```
+  
+Extract the tiffs from D:\temp\a.nd2 file into requested output D:\temp\output directory, handling the first and second multipoints only, employing parallel approach (each multipoint will be dealt in a different CPU core).  
+Please note: Using double quotes for paths is important when there are spaces in the path.  
+```
+python split_channels.py --input_file="D:\temp\a.nd2" --matlab_output_dir="D:\temp\output" --piv_params_file="D:\temp\piv.json" --calibration_file="D:\temp\calibration.json"  
+```  
+Calculate particle velocity for all multipoints and channels for input D:\temp\a.nd2 file, generate *.mat files (for each multipoint) into requested output directory D:\temp\output, using required setting files for pivlab and calibration.  
+Please note: Though it is possible to spread the work on multipoints using --parallel, since Pivlab is already making use of Matlab's parallelization package (if exists), it is in question how effective it is to use this argument in Pivlab scenario.
+  
+```
+python split_channels.py --input_file="D:\temp\a.nd2" --z_axis_profile_output_dir="D:\temp\output" --z_axis_profile_single_output_file --z_axis_profile_plot 
+```
+Calculate average signal intensity for input D:\temp\a.nd2 file, output the results to D:\temp\output, generates results to a single csv file and plot the results graphically in addition to generated csv file.    
 
 ## Calibration file
 The `--calibration_file` argument expects a JSON file with the following fields:  
@@ -106,7 +119,7 @@ python -m pip install .
 python setup.py install
 11. Find Pivlab's installation directory by entering "which PIVlab_GUI.m" in Matlab's terminal.
 12. Open bio_imaging_tools\nd2\tiff_sorter\settings.json in text editor.
-13. Change "pivlab_root" to point to Pivlab's path. 
+13. Change "pivlab_root" to point to Pivlab's path. Use "/" as path separator or "\\".
 
 
 
