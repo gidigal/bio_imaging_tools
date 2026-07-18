@@ -83,6 +83,9 @@ def validate_args(gui, input_file, input_dir, roi_file, matlab_output_dir, piv_p
               help='[all] Channels to process. Single value (1) or list ([0,1,3])')
 @click.option('--parallel', is_flag=True, help='[all] Whether to perform parallel computation using processes '
                                                'assigned to [multipoint, channel] combinations')
+@click.option('--roi',
+              help='[all] shows first image for each (multipoint, channel combination), '
+                    'allowing the user to select region of interest')
 @click.option('--roi_file',
               help='[all] json file with region of interest settings. '
                    'If omitted, the full image is used.')

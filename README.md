@@ -16,7 +16,8 @@ The script currently supports command line arguments only.
 | --output_dir                        | String | tiff-write     | ✅         | Path to folder where tiff files will be written                                                         |  
 | --multipoints                       | String | all            | Optional   | Multipoints to process. Single value (2) or list ([0,2])                                                |  
 | --channels                          | String | all            | Optional   | Channels to process. Single value (1) or list ([0,1,3])                                                 |
-| --parallel                          | None   | all            | Optional   | Whether to perform parallel computation using processes assigned to [multipoint, channel] combinations  |  
+| --parallel                          | None   | all            | Optional   | Whether to perform parallel computation using processes assigned to [multipoint, channel] combinations  |
+| --roi                               | None   | all            | Optional   | Allows the user to select regeion of interest from user interface                                       |
 | --roi_file                          | String | all            | Optional   | json file with region of interest settings                                                              |  
 | --matlab_output_dir                 | String | pivlab         | ✅         | Path to folder where pivlab results will be written                                                     |  
 | --piv_params_file                   | String | pivlab         | ✅         | Path to json file with pivlab parameters. See more below                                                |  
